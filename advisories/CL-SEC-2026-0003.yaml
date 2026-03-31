@@ -18,10 +18,13 @@ project:
     - ag-proto-cli
 
 affected:
-  introduced-in: "9af1bd8"  # 2026-01-01
+  introduced-in:  # 2026-01-01
+    commit: "9af1bd8"
+    url: "https://github.com/atgreen/ag-gRPC/commit/9af1bd8"
   fixed-in:
     commit: "c234e75"
     version: "1.3.0"
+    url: "https://github.com/atgreen/ag-gRPC/commit/c234e75"
   affected-dists: []
     # ag-gRPC is not in Quicklisp or ocicl
 

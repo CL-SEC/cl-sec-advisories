@@ -14,10 +14,13 @@ project:
     - completions
 
 affected:
-  introduced-in: "392c08c"  # 2025-10-25
+  introduced-in:  # 2025-10-25
+    commit: "392c08c"
+    url: "https://github.com/atgreen/cl-completions/commit/392c08c"
   fixed-in:
     commit: "b63ba8e"
     version: "1.1.0"
+    url: "https://github.com/atgreen/cl-completions/commit/b63ba8e"
   affected-dists:
     - dist: ocicl
       first-affected: "20260331-580b54e"

@@ -14,10 +14,13 @@ project:
     - cl-x509
 
 affected:
-  introduced-in: "09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
+  introduced-in:
+    commit: "09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
+    url: "https://github.com/atgreen/cl-x509/commit/09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
   fixed-in:
     commit: "2074636"
     version: "1.1.0"
+    url: "https://github.com/atgreen/cl-x509/commit/2074636"
   affected-dists:
     - dist: ocicl
       first-affected: "20260123-09a0c1b"

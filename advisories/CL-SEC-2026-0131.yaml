@@ -14,10 +14,13 @@ project:
     - sanitize-html
 
 affected:
-  introduced-in: "5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
+  introduced-in:
+    commit: "5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
   fixed-in:
     commit: "10cc58c"
     version: "1.0.0"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/10cc58c"
   affected-dists:
     - dist: ocicl
       first-affected: "20251102-f5366ec"

@@ -14,10 +14,13 @@ project:
     - completions
 
 affected:
-  introduced-in: "649ee5d"  # 2026-03-08
+  introduced-in:  # 2026-03-08
+    commit: "649ee5d"
+    url: "https://github.com/atgreen/cl-completions/commit/649ee5d"
   fixed-in:
     commit: "b63ba8e"
     version: "1.1.0"
+    url: "https://github.com/atgreen/cl-completions/commit/b63ba8e"
   affected-dists:
     - dist: ocicl
       first-affected: "20260309-2f8aa54"  # first snapshot containing the vuln

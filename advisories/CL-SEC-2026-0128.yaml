@@ -14,10 +14,13 @@ project:
     - cl-nats
 
 affected:
-  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  introduced-in:
+    commit: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+    url: "https://github.com/atgreen/cl-nats/commit/46414e3255e86c5f23e15b6356df9f702f1f2d7f"
   fixed-in:
     commit: "074433b"
     version: "1.0.0"
+    url: "https://github.com/atgreen/cl-nats/commit/074433b"
   affected-dists: []
     # cl-nats is not in Quicklisp or ocicl
 

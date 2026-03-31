@@ -14,10 +14,13 @@ project:
     - pure-tls
 
 affected:
-  introduced-in: "d78526befdbe9a23d82f8cfa39eed349e3a37848"
+  introduced-in:
+    commit: "d78526befdbe9a23d82f8cfa39eed349e3a37848"
+    url: "https://github.com/atgreen/pure-tls/commit/d78526befdbe9a23d82f8cfa39eed349e3a37848"
   fixed-in:
     commit: "3d2db0d"
     version: "1.11.0"
+    url: "https://github.com/atgreen/pure-tls/commit/3d2db0d"
   affected-dists:
     - dist: ocicl
       first-affected: "20260215-d78526b"

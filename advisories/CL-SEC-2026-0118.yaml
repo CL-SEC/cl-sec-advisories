@@ -16,10 +16,13 @@ project:
     - chat
 
 affected:
-  introduced-in: "787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
+  introduced-in:
+    commit: "787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
+    url: "https://github.com/atgreen/cl-chat/commit/787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
   fixed-in:
     commit: "d8b447c"
     version: "1.1.0"
+    url: "https://github.com/atgreen/cl-chat/commit/d8b447c"
   affected-dists:
     - dist: ocicl
       first-affected: "20260309-787c4bc"
