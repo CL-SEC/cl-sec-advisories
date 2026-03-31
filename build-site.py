@@ -78,6 +78,16 @@ def parse_advisory_full(path):
             if key in ("id", "title", "severity", "cvss", "cvss-score",
                        "cwe", "reported", "published"):
                 adv[key] = yval(val)
+            elif key == "description" and val == "|":
+                current_block = "description"
+                block_buf = []
+                i += 1
+                continue
+            elif key == "recommendation" and val == "|":
+                current_block = "recommendation"
+                block_buf = []
+                i += 1
+                continue
 
         # Indent 2: sub-keys
         elif indent == 2 and ":" in clean:
