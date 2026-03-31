@@ -3,7 +3,6 @@ name: Publish advisory database
 on:
   push:
     branches: [main]
-    paths: ['advisories/**']
 
   # Allow manual trigger
   workflow_dispatch:
@@ -27,12 +26,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build tarball
-        run: |
-          mkdir -p _site
-          tar czf _site/advisories.tar.gz -C advisories .
-          # Also publish a version file with the commit hash and count
-          echo "{\"commit\": \"$GITHUB_SHA\", \"count\": $(ls advisories/*.yaml | wc -l), \"updated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > _site/version.json
+      - name: Build site
+        run: python3 build-site.py
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
