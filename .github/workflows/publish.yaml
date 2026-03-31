@@ -1,0 +1,44 @@
+name: Publish advisory database
+
+on:
+  push:
+    branches: [main]
+    paths: ['advisories/**']
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build tarball
+        run: |
+          mkdir -p _site
+          tar czf _site/advisories.tar.gz -C advisories .
+          # Also publish a version file with the commit hash and count
+          echo "{\"commit\": \"$GITHUB_SHA\", \"count\": $(ls advisories/*.yaml | wc -l), \"updated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > _site/version.json
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
