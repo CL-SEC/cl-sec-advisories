@@ -17,6 +17,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import markdown
+
 ADVISORY_DIR = Path("advisories")
 SITE_DIR = Path("_site")
 
@@ -36,10 +38,12 @@ def parse_advisory_full(path):
         stripped = line.lstrip()
         indent = len(line) - len(stripped)
 
-        # Multiline block collection
+        # Multiline block collection (preserve relative indent)
         if current_block is not None:
             if stripped == "" or indent > 1:
-                block_buf.append(stripped)
+                # Strip exactly 2 chars of YAML indent, preserve the rest
+                dedented = line[2:] if len(line) > 2 and line[:2] == "  " else line.lstrip()
+                block_buf.append(dedented)
                 i += 1
                 continue
             else:
@@ -168,54 +172,14 @@ def severity_order(sev):
     return {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(sev, 4)
 
 
+_md = markdown.Markdown(extensions=["fenced_code", "tables"])
+
 def desc_to_html(desc):
-    """Convert advisory description text to HTML paragraphs."""
+    """Convert advisory description/recommendation markdown to HTML."""
     if not desc:
         return ""
-    # Split on double newlines for paragraphs, preserve code blocks
-    parts = []
-    in_code = False
-    code_buf = []
-    for line in desc.split("\n"):
-        if line.strip().startswith("(") or line.strip().startswith("(format") or \
-           line.strip().startswith("(setf") or line.strip().startswith("(defun") or \
-           line.strip().startswith("(let") or line.strip().startswith("(when"):
-            if not in_code:
-                in_code = True
-                code_buf = []
-            code_buf.append(line)
-        elif in_code and line.strip() == "":
-            parts.append("<pre><code>" + esc("\n".join(code_buf)) + "</code></pre>")
-            in_code = False
-        elif in_code:
-            code_buf.append(line)
-        elif line.strip() == "":
-            parts.append("")
-        else:
-            parts.append(esc(line))
-
-    if in_code and code_buf:
-        parts.append("<pre><code>" + esc("\n".join(code_buf)) + "</code></pre>")
-
-    # Join into paragraphs
-    result = []
-    para = []
-    for p in parts:
-        if p == "":
-            if para:
-                result.append("<p>" + " ".join(para) + "</p>")
-                para = []
-        elif p.startswith("<pre>"):
-            if para:
-                result.append("<p>" + " ".join(para) + "</p>")
-                para = []
-            result.append(p)
-        else:
-            para.append(p)
-    if para:
-        result.append("<p>" + " ".join(para) + "</p>")
-
-    return "\n".join(result)
+    _md.reset()
+    return _md.convert(desc)
 
 
 def build_modal(a):
