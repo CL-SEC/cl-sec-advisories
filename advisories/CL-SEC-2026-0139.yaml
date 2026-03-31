@@ -14,9 +14,9 @@ project:
     - cl-x509
 
 affected:
-  introduced-in:  # present since initial release
-    commit: "09a0c1bc"
-    url: "https://github.com/atgreen/cl-x509/commit/09a0c1bc"
+  introduced-in:  # 2026-01-23
+    commit: "799828b"
+    url: "https://github.com/atgreen/cl-x509/commit/799828b"
   fixed-in:
     commit: "2074636"
     version: "1.1.0"

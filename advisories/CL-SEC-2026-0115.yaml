@@ -14,9 +14,9 @@ project:
     - pure-tls
 
 affected:
-  introduced-in:
-    commit: "d78526befdbe9a23d82f8cfa39eed349e3a37848"
-    url: "https://github.com/atgreen/pure-tls/commit/d78526befdbe9a23d82f8cfa39eed349e3a37848"
+  introduced-in:  # 2026-01-02
+    commit: "0bf5413"
+    url: "https://github.com/atgreen/pure-tls/commit/0bf5413"
   fixed-in:
     commit: "3d2db0d"
     version: "1.11.0"

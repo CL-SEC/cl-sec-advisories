@@ -14,9 +14,9 @@ project:
     - sanitize-html
 
 affected:
-  introduced-in:
-    commit: "5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
-    url: "https://github.com/atgreen/cl-sanitize-html/commit/5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
+  introduced-in:  # 2025-11-02
+    commit: "a93616f"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/a93616f"
   fixed-in:
     commit: "10cc58c"
     version: "1.0.0"

@@ -16,9 +16,9 @@ project:
     - chat
 
 affected:
-  introduced-in:
-    commit: "787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
-    url: "https://github.com/atgreen/cl-chat/commit/787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
+  introduced-in:  # 2024-03-31
+    commit: "494e289"
+    url: "https://github.com/atgreen/cl-chat/commit/494e289"
   fixed-in:
     commit: "d8b447c"
     version: "1.1.0"

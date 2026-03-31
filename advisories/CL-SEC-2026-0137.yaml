@@ -14,9 +14,9 @@ project:
     - cl-selfupdate
 
 affected:
-  introduced-in:
-    commit: "1b09d3e8e5fcab72c2c50c01f3a4c163a547b1a7"
-    url: "https://github.com/atgreen/cl-selfupdate/commit/1b09d3e8e5fcab72c2c50c01f3a4c163a547b1a7"
+  introduced-in:  # 2026-01-13
+    commit: "30134b7"
+    url: "https://github.com/atgreen/cl-selfupdate/commit/30134b7"
   fixed-in:
     commit: "150b5d2"
     version: "1.0.0"
