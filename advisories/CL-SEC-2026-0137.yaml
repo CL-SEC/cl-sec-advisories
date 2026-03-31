@@ -1,0 +1,46 @@
+id: CL-SEC-2026-0137
+title: "Archive path traversal in tar and zip extraction in cl-selfupdate"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N"
+cvss-score: 6.5
+cwe: CWE-22
+
+project:
+  name: cl-selfupdate
+  homepage: https://github.com/atgreen/cl-selfupdate
+  affected-systems:
+    - cl-selfupdate
+
+affected:
+  introduced-in: "1b09d3e8e5fcab72c2c50c01f3a4c163a547b1a7"
+  fixed-in:
+    commit: "150b5d2"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260120-1b09d3e"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The tar extraction code uses file-namestring to extract the basename,
+  but its behavior with malicious input is implementation-defined. On
+  some CL implementations, crafted pathnames with path traversal
+  sequences may not be fully sanitized. The zip extraction has the same
+  pattern.
+
+  Additionally, the executable-name matching uses substring search
+  rather than exact match, meaning a crafted archive entry name like
+  "legit-app-evil-payload" matches an executable-name of "legit-app".
+
+recommendation: |
+  Validate that extracted paths are strictly within the output
+  directory by resolving the full path and checking the prefix. Use
+  exact basename matching rather than substring search for
+  executable-name. Reject archive entries containing ".." path
+  components.
+
+references:
+  - https://cwe.mitre.org/data/definitions/22.html

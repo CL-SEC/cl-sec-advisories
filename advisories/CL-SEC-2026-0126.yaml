@@ -1,0 +1,38 @@
+id: CL-SEC-2026-0126
+title: "Credential leakage in error messages and conditions in cl-nats"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 6.5
+cwe: CWE-209
+
+project:
+  name: cl-nats
+  homepage: https://github.com/atgreen/cl-nats
+  affected-systems:
+    - cl-nats
+
+affected:
+  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  fixed-in:
+    commit: "074433b"
+    version: "1.0.0"
+  affected-dists: []
+    # cl-nats is not in Quicklisp or ocicl
+
+description: |
+  The connection failure path formats the last error into a user-visible
+  error message. If the error's printed representation includes the
+  CONNECT JSON (which contains user, pass, and auth_token), credentials
+  will leak into log files, error handlers, or interactive debuggers.
+  The build-connect-json output is passed to format-connect and then to
+  transport-write-string, and any error during that write could capture
+  the CONNECT payload in its condition message.
+
+recommendation: |
+  Ensure error messages never include the raw CONNECT JSON or credential
+  values. Sanitize or redact error conditions before re-signaling them.
+
+references:
+  - https://cwe.mitre.org/data/definitions/209.html

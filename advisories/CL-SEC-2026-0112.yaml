@@ -1,0 +1,47 @@
+id: CL-SEC-2026-0112
+title: "Missing TLS 1.3 downgrade sentinel check in pure-tls client handshake"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 7.4
+cwe: CWE-757
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in: "d78526befdbe9a23d82f8cfa39eed349e3a37848"
+  fixed-in:
+    commit: "3d2db0d"
+    version: "1.11.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260215-d78526b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  RFC 8446 Section 4.1.3 requires TLS 1.3 clients to check the last
+  8 bytes of ServerHello.random for downgrade sentinel values when the
+  server negotiates TLS 1.2 or below. pure-tls does not perform this
+  check in process-server-hello or any other function.
+
+  While pure-tls only supports TLS 1.3 and rejects ServerHello without
+  the supported_versions extension indicating 1.3, a MITM attacker
+  could craft a response that passes the supported_versions check while
+  directing the client toward a weaker configuration. If pure-tls is
+  ever extended to support TLS 1.2 fallback, the absence of this check
+  would enable downgrade attacks.
+
+recommendation: |
+  Add downgrade sentinel checking in the client handshake after
+  receiving ServerHello, even when only TLS 1.3 is negotiated. Check
+  for sentinel values 44 4F 57 4E 47 52 44 01 (TLS 1.2) and
+  44 4F 57 4E 47 52 44 00 (TLS 1.1 or below).
+
+references:
+  - https://cwe.mitre.org/data/definitions/757.html

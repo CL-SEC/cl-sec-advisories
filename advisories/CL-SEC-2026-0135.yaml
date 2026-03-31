@@ -1,0 +1,44 @@
+id: CL-SEC-2026-0135
+title: "Predictable temporary directory enables symlink and race attacks in cl-selfupdate"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H"
+cvss-score: 7.0
+cwe: CWE-377
+
+project:
+  name: cl-selfupdate
+  homepage: https://github.com/atgreen/cl-selfupdate
+  affected-systems:
+    - cl-selfupdate
+
+affected:
+  introduced-in: "1b09d3e8e5fcab72c2c50c01f3a4c163a547b1a7"
+  fixed-in:
+    commit: "150b5d2"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260120-1b09d3e"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The temporary directory used for downloads is constructed with a
+  predictable name based on get-universal-time (wall-clock seconds).
+  A local attacker can pre-create the directory or a symlink before the
+  update runs. Since ensure-directories-exist does not fail if the
+  directory already exists, the attacker controls where files are
+  written. Between download and extraction, a local attacker can also
+  swap the archive file (TOCTOU race). The temporary directory is
+  never cleaned up.
+
+recommendation: |
+  Use mkdtemp(3) semantics for creating temporary directories with
+  random, exclusive creation. Clean up temporary directories after
+  use in an unwind-protect. Open files with exclusive creation flags
+  where possible.
+
+references:
+  - https://cwe.mitre.org/data/definitions/377.html

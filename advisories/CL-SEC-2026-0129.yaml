@@ -1,0 +1,51 @@
+id: CL-SEC-2026-0129
+title: "Double-encoded entity reversal enables XSS via output corruption in cl-sanitize-html"
+reported: 2026-03-31
+published: null
+severity: critical
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N"
+cvss-score: 9.3
+cwe: CWE-79
+
+project:
+  name: cl-sanitize-html
+  homepage: https://github.com/atgreen/cl-sanitize-html
+  affected-systems:
+    - sanitize-html
+
+affected:
+  introduced-in: "5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
+  fixed-in:
+    commit: "10cc58c"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20251102-f5366ec"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The function decode-double-encoded-entities runs as a post-processing
+  step on the final serialized HTML string, reversing Plump's safe
+  entity encoding of &amp;gt;, &amp;lt;, &amp;quot;, and &amp;apos;
+  back into their active forms. This post-serialization string rewriting
+  is an anti-pattern that creates a fragile security boundary.
+
+  User-controlled text content containing literal entity-like strings
+  can be decoded into active HTML characters. The triple-encoding
+  regex has a negative lookahead that can be bypassed with entity names
+  not in the exclusion list. Any change to Plump's serialization
+  behavior could make this directly exploitable for XSS.
+
+recommendation: |
+  Remove decode-double-encoded-entities entirely. If Plump's
+  serialization produces double-encoded entities, address this by
+  configuring Plump's serializer or by custom serialization -- never
+  by regex-replacing the output of a security-critical process.
+
+references:
+  - https://cwe.mitre.org/data/definitions/79.html

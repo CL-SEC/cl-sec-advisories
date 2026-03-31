@@ -1,0 +1,43 @@
+id: CL-SEC-2026-0140
+title: "No validation of certificate validity period in cl-x509"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+cvss-score: 5.3
+cwe: CWE-754
+
+project:
+  name: cl-x509
+  homepage: https://github.com/atgreen/cl-x509
+  affected-systems:
+    - cl-x509
+
+affected:
+  introduced-in: "09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
+  fixed-in:
+    commit: "2074636"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260123-09a0c1b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The days parameter used to compute the certificate validity period
+  is not validated. Negative values produce certificates where
+  not-after precedes not-before (malformed per RFC 5280 Section
+  4.1.2.5). Zero produces a zero-second validity period. Extremely
+  large values produce unreasonable validity periods. These malformed
+  certificates can cause validation failures, interoperability
+  problems, or create a false sense of security.
+
+recommendation: |
+  Validate that days is a positive integer. Enforce a reasonable
+  maximum (e.g., 825 days for leaf certificates per CA/Browser Forum
+  guidelines, or 36500 days as a sanity cap). Signal an error for
+  invalid inputs.
+
+references:
+  - https://cwe.mitre.org/data/definitions/754.html

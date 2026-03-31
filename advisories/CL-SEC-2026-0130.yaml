@@ -1,0 +1,49 @@
+id: CL-SEC-2026-0130
+title: "Missing SVG/MathML foreign content handling enables XSS in cl-sanitize-html"
+reported: 2026-03-31
+published: null
+severity: critical
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N"
+cvss-score: 9.3
+cwe: CWE-79
+
+project:
+  name: cl-sanitize-html
+  homepage: https://github.com/atgreen/cl-sanitize-html
+  affected-systems:
+    - sanitize-html
+
+affected:
+  introduced-in: "5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
+  fixed-in:
+    commit: "10cc58c"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20251102-f5366ec"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The sanitizer has no special handling for SVG or MathML namespace
+  elements. The dangerous-tag list that triggers full content removal
+  does not include svg, math, object, iframe, embed, applet, base,
+  meta, link, or template. These tags are handled by the "remove tag,
+  keep children" path, which promotes their content into the document.
+
+  SVG elements can contain foreignObject which re-enters HTML parsing
+  context, and MathML's annotation-xml similarly re-enters HTML
+  parsing. This enables mutation XSS (mXSS) where the sanitizer's DOM
+  tree differs from the browser's re-parsing of the sanitized output.
+
+recommendation: |
+  Add all potentially dangerous tags to the full-removal list: svg,
+  math, iframe, object, embed, applet, base, meta, link, template,
+  audio, video, source, track, param, xmp, listing, and plaintext.
+
+references:
+  - https://cwe.mitre.org/data/definitions/79.html

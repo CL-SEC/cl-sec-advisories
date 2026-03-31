@@ -1,0 +1,44 @@
+id: CL-SEC-2026-0143
+title: "Private key material not zeroized in memory in cl-x509"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 4.7
+cwe: CWE-316
+
+project:
+  name: cl-x509
+  homepage: https://github.com/atgreen/cl-x509
+  affected-systems:
+    - cl-x509
+
+affected:
+  introduced-in: "09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
+  fixed-in:
+    commit: "2074636"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260123-09a0c1b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  RSA private key components (d, p, q, dp, dq, qinv) are returned as
+  Common Lisp bignums and passed around as function parameters without
+  ever being explicitly cleared from memory. Intermediate DER encodings
+  and PEM string representations also persist in the Lisp heap. Common
+  Lisp's garbage collector does not guarantee freed memory is
+  overwritten, and bignum values may be copied during GC compaction.
+
+  Core dumps, swap files, or memory forensics can recover key material.
+
+recommendation: |
+  For byte vectors containing key material (DER encodings, PEM
+  strings), provide explicit clearing using (fill array 0) after use.
+  Document the limitation clearly. Warn users that key material should
+  be used in short-lived processes.
+
+references:
+  - https://cwe.mitre.org/data/definitions/316.html

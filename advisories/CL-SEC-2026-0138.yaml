@@ -1,0 +1,44 @@
+id: CL-SEC-2026-0138
+title: "No protection against version downgrade attacks in cl-selfupdate"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N"
+cvss-score: 5.9
+cwe: CWE-757
+
+project:
+  name: cl-selfupdate
+  homepage: https://github.com/atgreen/cl-selfupdate
+  affected-systems:
+    - cl-selfupdate
+
+affected:
+  introduced-in: "1b09d3e8e5fcab72c2c50c01f3a4c163a547b1a7"
+  fixed-in:
+    commit: "150b5d2"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260120-1b09d3e"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The download-update function does not perform any version comparison.
+  If a caller passes a :release argument directly, there is no check
+  that the release version is newer than the current version. The
+  function will install any release including older ones with known
+  vulnerabilities.
+
+  Furthermore, detect-latest fetches at most 30 releases per page. If
+  an attacker can create enough fake releases to push the real latest
+  beyond page 1, detect-latest would return a stale version.
+
+recommendation: |
+  Enforce version comparison in download-update and apply-update.
+  Paginate through all releases in detect-latest, or increase the page
+  size and document the limitation.
+
+references:
+  - https://cwe.mitre.org/data/definitions/757.html

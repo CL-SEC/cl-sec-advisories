@@ -1,0 +1,39 @@
+id: CL-SEC-2026-0127
+title: "Server-supplied connect_urls enable SSRF with credential forwarding in cl-nats"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N"
+cvss-score: 8.6
+cwe: CWE-918
+
+project:
+  name: cl-nats
+  homepage: https://github.com/atgreen/cl-nats
+  affected-systems:
+    - cl-nats
+
+affected:
+  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  fixed-in:
+    commit: "074433b"
+    version: "1.0.0"
+  affected-dists: []
+    # cl-nats is not in Quicklisp or ocicl
+
+description: |
+  During handshake and on reconnect, the client merges server-supplied
+  connect_urls from the INFO message into its server list without
+  validation. A compromised or malicious NATS server can direct the
+  client to connect to arbitrary hosts and ports. The client will open
+  TCP connections and send CONNECT JSON with credentials (user, pass,
+  auth_token) to attacker-controlled endpoints.
+
+recommendation: |
+  Provide a :no-discovered-servers option to disable merging. When
+  merging is enabled, restrict discovered URLs to the same subnet or
+  domain as configured servers. Do not send credentials to discovered
+  servers that were not in the original configuration.
+
+references:
+  - https://cwe.mitre.org/data/definitions/918.html

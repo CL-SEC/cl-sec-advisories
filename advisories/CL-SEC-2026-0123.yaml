@@ -1,0 +1,41 @@
+id: CL-SEC-2026-0123
+title: "NATS protocol injection via unsanitized subject and reply-to fields in cl-nats"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 8.1
+cwe: CWE-93
+
+project:
+  name: cl-nats
+  homepage: https://github.com/atgreen/cl-nats
+  affected-systems:
+    - cl-nats
+
+affected:
+  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  fixed-in:
+    commit: "074433b"
+    version: "1.0.0"
+  affected-dists: []
+    # cl-nats is not in Quicklisp or ocicl
+
+description: |
+  Subject names, reply-to addresses, and queue group names are
+  interpolated directly into PUB, SUB, and HPUB wire protocol commands
+  using format with no validation. A subject containing CRLF characters
+  can inject arbitrary NATS protocol commands onto the wire, potentially
+  subscribing to unauthorized subjects or publishing rogue messages.
+
+  This is exploitable whenever user-controlled input flows into
+  publish, subscribe, or request subject parameters.
+
+recommendation: |
+  Validate all subject, reply-to, and queue-group strings before
+  interpolation. NATS subjects must not contain spaces, carriage
+  returns, newlines, or null bytes. Reject or signal an error on
+  invalid characters.
+
+references:
+  - https://cwe.mitre.org/data/definitions/93.html

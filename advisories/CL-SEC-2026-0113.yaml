@@ -1,0 +1,43 @@
+id: CL-SEC-2026-0113
+title: "Missing ServerHello legacy_session_id_echo validation in pure-tls"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:L"
+cvss-score: 4.8
+cwe: CWE-345
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in: "d78526befdbe9a23d82f8cfa39eed349e3a37848"
+  fixed-in:
+    commit: "3d2db0d"
+    version: "1.11.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260215-d78526b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  RFC 8446 Section 4.1.3 requires clients to abort the handshake with
+  an illegal_parameter alert if the ServerHello legacy_session_id_echo
+  does not match the legacy_session_id sent in the ClientHello. The
+  process-server-hello function never performs this comparison, even
+  though the client-handshake struct stores the legacy-session-id.
+
+  A MITM proxy could tamper with the session ID without detection,
+  potentially confusing middleboxes or causing session-mismatch issues.
+
+recommendation: |
+  After parsing ServerHello, compare server-hello-legacy-session-id-echo
+  against client-handshake-legacy-session-id and abort with an
+  illegal_parameter alert if they differ.
+
+references:
+  - https://cwe.mitre.org/data/definitions/345.html

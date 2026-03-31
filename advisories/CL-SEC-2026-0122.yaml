@@ -1,0 +1,43 @@
+id: CL-SEC-2026-0122
+title: "No TLS certificate verification configuration in cl-nats"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 7.4
+cwe: CWE-295
+
+project:
+  name: cl-nats
+  homepage: https://github.com/atgreen/cl-nats
+  affected-systems:
+    - cl-nats
+
+affected:
+  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  fixed-in:
+    commit: "074433b"
+    version: "1.0.0"
+  affected-dists: []
+    # cl-nats is not in Quicklisp or ocicl
+
+description: |
+  TLS connections are established via pure-tls:make-tls-client-stream
+  with only the :hostname parameter for SNI. There is no API to
+  configure CA bundles, certificate pinning, whether to verify the
+  server certificate, or client certificates for mutual TLS. The
+  behavior depends entirely on pure-tls defaults which the user cannot
+  override.
+
+  If pure-tls does not verify certificates by default, this is a
+  man-in-the-middle vulnerability. Even if it does verify, the user has
+  no way to supply a custom CA bundle or disable verification for
+  testing.
+
+recommendation: |
+  Expose TLS verification options: :tls-verify (boolean), :tls-ca-file
+  (path to CA bundle), :tls-client-cert and :tls-client-key (for mTLS).
+  Pass these through to pure-tls:make-tls-client-stream.
+
+references:
+  - https://cwe.mitre.org/data/definitions/295.html

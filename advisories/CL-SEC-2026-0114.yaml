@@ -1,0 +1,46 @@
+id: CL-SEC-2026-0114
+title: "Non-cryptographic PRNG used for ticket age obfuscation in pure-tls"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"
+cvss-score: 3.7
+cwe: CWE-338
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in: "d78526befdbe9a23d82f8cfa39eed349e3a37848"
+  fixed-in:
+    commit: "3d2db0d"
+    version: "1.11.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260215-d78526b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The server generates ticket_age_add values using Common Lisp's
+  (random (expt 2 32)), which uses the implementation's default PRNG,
+  typically a Mersenne Twister or similar non-cryptographic generator.
+  RFC 8446 Section 4.6.1 requires fresh values to obfuscate ticket age
+  and prevent correlation attacks.
+
+  An observer who can see multiple NewSessionTicket messages may be
+  able to predict future ticket_age_add values and de-obfuscate ticket
+  ages, enabling session correlation and traffic analysis. The
+  random-grease-value function in src/constants.lisp also uses the
+  non-cryptographic (random ...) for GREASE values.
+
+recommendation: |
+  Replace (random (expt 2 32)) with a cryptographically secure random
+  source, e.g., extracting 4 bytes from a CSPRNG and decoding them as
+  a uint32.
+
+references:
+  - https://cwe.mitre.org/data/definitions/338.html

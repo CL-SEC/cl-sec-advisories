@@ -1,0 +1,47 @@
+id: CL-SEC-2026-0118
+title: "Stored cross-site scripting via unsanitized WebSocket messages in cl-chat"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N"
+cvss-score: 9.0
+cwe: CWE-79
+
+project:
+  name: cl-chat
+  homepage: https://github.com/atgreen/cl-chat
+  affected-systems:
+    - web-chat
+  unaffected-systems:
+    - chat
+
+affected:
+  introduced-in: "787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
+  fixed-in:
+    commit: "d8b447c"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260309-787c4bc"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  User prompts are rendered through 3bmd (Markdown-to-HTML converter)
+  and injected into the page via innerHTML and outerHTML on the client
+  side. The Markdown-to-HTML conversion does not sanitize inline HTML,
+  so a user prompt containing script tags or event handler attributes
+  will be converted to executable HTML.
+
+  In a multi-user scenario (shared session-data hash table and
+  WebSocket chat rooms), this is a stored XSS vulnerability where one
+  user's malicious prompt is rendered in another user's browser.
+
+recommendation: |
+  Sanitize HTML output from the Markdown renderer before DOM injection.
+  Use textContent instead of innerHTML where possible, or use a DOM
+  sanitization library like DOMPurify on the client side. Alternatively,
+  configure 3bmd to strip raw HTML from Markdown input.
+
+references:
+  - https://cwe.mitre.org/data/definitions/79.html

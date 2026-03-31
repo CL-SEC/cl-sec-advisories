@@ -1,0 +1,45 @@
+id: CL-SEC-2026-0134
+title: "Checksum validation optional and silently skipped in cl-selfupdate"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+cvss-score: 8.1
+cwe: CWE-354
+
+project:
+  name: cl-selfupdate
+  homepage: https://github.com/atgreen/cl-selfupdate
+  affected-systems:
+    - cl-selfupdate
+
+affected:
+  introduced-in: "1b09d3e8e5fcab72c2c50c01f3a4c163a547b1a7"
+  fixed-in:
+    commit: "150b5d2"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260120-1b09d3e"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The SHA256 validation system has multiple weaknesses. If no checksum
+  asset (.sha256, checksums.txt, or SHA256SUMS) is present in the
+  release, the download proceeds with zero integrity verification and
+  no warning. Even when a checksum file is found, if the expected hash
+  cannot be parsed for the specific asset, validation is silently
+  skipped. The checksum file is fetched from the same unauthenticated
+  channel as the binary, so an attacker who can compromise the release
+  can replace both simultaneously. There is no GPG or minisign
+  signature verification.
+
+recommendation: |
+  Implement cryptographic signature verification (GPG or minisign)
+  with a signing key pinned in the application, not fetched from the
+  release. At minimum, warn loudly or error when no checksum is
+  available. Verify asset-size against the downloaded file size.
+
+references:
+  - https://cwe.mitre.org/data/definitions/354.html

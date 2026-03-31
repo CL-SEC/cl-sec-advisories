@@ -1,0 +1,45 @@
+id: CL-SEC-2026-0139
+title: "No minimum RSA key size enforcement in cl-x509"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 9.1
+cwe: CWE-326
+
+project:
+  name: cl-x509
+  homepage: https://github.com/atgreen/cl-x509
+  affected-systems:
+    - cl-x509
+
+affected:
+  introduced-in: "09a0c1bc"  # present since initial release
+  fixed-in:
+    commit: "2074636"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260123-09a0c1b"  # earliest known ocicl snapshot
+      last-affected: null                   # still affected in latest
+      fixed-in: null
+    # cl-x509 is not in Quicklisp as of 2026-03-31
+
+description: |
+  The generate-rsa-key-pair function accepts an arbitrary :bits
+  parameter with a default of 2048 but imposes no minimum. A caller
+  can generate keys of any size including fatally weak ones such as
+  512, 256, or 64 bits. RSA-512 was factored publicly in 1999. NIST
+  has required a minimum of 2048 bits since 2013.
+
+  If cl-x509 is used to generate CA certificates with small keys, the
+  entire PKI chain rooted in that CA is compromised. An attacker who
+  can factor the CA's modulus can forge arbitrary certificates.
+
+recommendation: |
+  Enforce a minimum key size of 2048 bits in generate-rsa-key-pair.
+  Signal a clear error for any request below this floor. Consider
+  defaulting to 4096 bits for CA certificates.
+
+references:
+  - https://cwe.mitre.org/data/definitions/326.html

@@ -1,0 +1,40 @@
+id: CL-SEC-2026-0124
+title: "Unbounded memory allocation from malicious server MSG byte counts in cl-nats"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-770
+
+project:
+  name: cl-nats
+  homepage: https://github.com/atgreen/cl-nats
+  affected-systems:
+    - cl-nats
+
+affected:
+  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  fixed-in:
+    commit: "074433b"
+    version: "1.0.0"
+  affected-dists: []
+    # cl-nats is not in Quicklisp or ocicl
+
+description: |
+  When the reader thread processes MSG or HMSG operations, it reads the
+  byte count from the parsed protocol line and immediately allocates a
+  buffer of that size via make-array. A malicious or compromised NATS
+  server can send a MSG line with an enormous byte count, causing the
+  client to attempt to allocate gigabytes of memory. There is no upper
+  bound check against max_payload from the server INFO, and a malicious
+  server controls that value as well.
+
+recommendation: |
+  Enforce a client-side maximum payload size (configurable, with a sane
+  default like 64MB). Check the byte count before calling
+  transport-read-bytes. Validate that header-bytes is less than or
+  equal to total-bytes in HMSG handling.
+
+references:
+  - https://cwe.mitre.org/data/definitions/770.html

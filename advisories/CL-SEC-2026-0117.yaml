@@ -1,0 +1,43 @@
+id: CL-SEC-2026-0117
+title: "API keys leaked via error messages and debug logging in cl-chat"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 6.5
+cwe: CWE-532
+
+project:
+  name: cl-chat
+  homepage: https://github.com/atgreen/cl-chat
+  affected-systems:
+    - web-chat
+  unaffected-systems:
+    - chat
+
+affected:
+  introduced-in: "787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
+  fixed-in:
+    commit: "d8b447c"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260309-787c4bc"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The safe-http-request error handler includes the full request URI in
+  error messages, which leaks the Gemini API key since it is embedded
+  in the URL. API error response bodies are also propagated in error
+  messages and may echo back request details. When the debug stream is
+  enabled, full API request payloads and responses are logged without
+  redaction of sensitive fields.
+
+recommendation: |
+  Redact API keys from error messages and debug output. Move the Gemini
+  key out of the URL (see CL-SEC-2026-0116). Implement a wrapper that
+  strips sensitive headers and parameters before logging.
+
+references:
+  - https://cwe.mitre.org/data/definitions/532.html

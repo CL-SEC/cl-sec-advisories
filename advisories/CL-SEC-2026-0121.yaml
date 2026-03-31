@@ -1,0 +1,38 @@
+id: CL-SEC-2026-0121
+title: "Credentials sent in cleartext over non-TLS connections in cl-nats"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 5.9
+cwe: CWE-319
+
+project:
+  name: cl-nats
+  homepage: https://github.com/atgreen/cl-nats
+  affected-systems:
+    - cl-nats
+
+affected:
+  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  fixed-in:
+    commit: "074433b"
+    version: "1.0.0"
+  affected-dists: []
+    # cl-nats is not in Quicklisp or ocicl
+
+description: |
+  The build-connect-json function unconditionally includes user, pass,
+  and auth_token fields in the CONNECT JSON payload. When the connection
+  is not using TLS (nats:// URLs), these credentials are transmitted in
+  plaintext over the wire. There is no check or warning when credentials
+  are provided on a plain TCP connection. A network observer can
+  trivially intercept authentication tokens and passwords.
+
+recommendation: |
+  At minimum, emit a warning when credentials are supplied on a non-TLS
+  connection. Ideally, require an explicit opt-in (e.g., :allow-
+  plaintext-auth t) to send credentials over unencrypted connections.
+
+references:
+  - https://cwe.mitre.org/data/definitions/319.html

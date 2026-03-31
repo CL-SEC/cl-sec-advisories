@@ -1,0 +1,49 @@
+id: CL-SEC-2026-0133
+title: "Incomplete dangerous tag list allows content promotion from dangerous contexts in cl-sanitize-html"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+cvss-score: 6.1
+cwe: CWE-79
+
+project:
+  name: cl-sanitize-html
+  homepage: https://github.com/atgreen/cl-sanitize-html
+  affected-systems:
+    - sanitize-html
+
+affected:
+  introduced-in: "5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
+  fixed-in:
+    commit: "10cc58c"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20251102-f5366ec"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  When a tag is not in the allowlist and not in the dangerous tags
+  list, it is removed but its children are promoted to the parent. The
+  dangerous tags list is missing svg, math, iframe, object, embed,
+  template, xmp, listing, plaintext, base, meta, link, head, and
+  title. These tags have their content promoted rather than fully
+  removed.
+
+  The most critical missing entry is svg, which enables mutation XSS
+  through SVG/MathML namespace confusion where the sanitizer's DOM
+  tree differs from the browser's re-parsing of the sanitized output.
+
+recommendation: |
+  Add svg, math, iframe, object, embed, applet, template, xmp,
+  listing, plaintext, base, meta, link, head, and title to the
+  dangerous tags list for full content removal.
+
+references:
+  - https://cwe.mitre.org/data/definitions/79.html

@@ -1,0 +1,45 @@
+id: CL-SEC-2026-0132
+title: "Protocol-relative URL bypass in cl-sanitize-html allows resource loading from arbitrary domains"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:N/A:N"
+cvss-score: 4.1
+cwe: CWE-20
+
+project:
+  name: cl-sanitize-html
+  homepage: https://github.com/atgreen/cl-sanitize-html
+  affected-systems:
+    - sanitize-html
+
+affected:
+  introduced-in: "5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
+  fixed-in:
+    commit: "10cc58c"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20251102-f5366ec"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The protocol-allowed-p function checks if a URL starts with "/" and
+  returns true, intending to allow relative URLs. However, protocol-
+  relative URLs starting with "//" (e.g., "//evil.com/track.gif") also
+  pass this check, allowing an attacker to load resources from arbitrary
+  domains. This enables tracking pixels, data exfiltration via URL
+  parameters, and phishing via image replacement.
+
+recommendation: |
+  Check that relative URLs start with a single "/" not followed by
+  another "/". Explicitly reject protocol-relative URLs, or require
+  an explicit scheme from the allowed protocols list.
+
+references:
+  - https://cwe.mitre.org/data/definitions/20.html

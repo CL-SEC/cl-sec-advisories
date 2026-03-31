@@ -1,0 +1,38 @@
+id: CL-SEC-2026-0128
+title: "Header injection via CRLF in serialized NATS headers in cl-nats"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N"
+cvss-score: 6.5
+cwe: CWE-93
+
+project:
+  name: cl-nats
+  homepage: https://github.com/atgreen/cl-nats
+  affected-systems:
+    - cl-nats
+
+affected:
+  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  fixed-in:
+    commit: "074433b"
+    version: "1.0.0"
+  affected-dists: []
+    # cl-nats is not in Quicklisp or ocicl
+
+description: |
+  The serialize-headers function does not validate header names or
+  values before formatting them into the wire protocol. A header name
+  or value containing CRLF characters can inject additional header
+  lines or terminate the header block early, potentially corrupting
+  message framing.
+
+recommendation: |
+  Validate that header names contain only printable ASCII without
+  colons, spaces, or control characters. Validate that header values
+  do not contain carriage return or newline characters. Reject invalid
+  headers with an error.
+
+references:
+  - https://cwe.mitre.org/data/definitions/93.html

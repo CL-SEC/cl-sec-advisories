@@ -1,0 +1,44 @@
+id: CL-SEC-2026-0141
+title: "No CN/subject field validation allows null-byte injection in cl-x509"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+cvss-score: 7.5
+cwe: CWE-20
+
+project:
+  name: cl-x509
+  homepage: https://github.com/atgreen/cl-x509
+  affected-systems:
+    - cl-x509
+
+affected:
+  introduced-in: "09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
+  fixed-in:
+    commit: "2074636"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260123-09a0c1b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The encode-name function passes CN, O, and OU values directly to
+  encode-utf8-string without any validation. There is no check for
+  string length (DirectoryString maximum 64 characters for CN per
+  RFC 5280), null bytes, empty strings, or control characters.
+
+  A CN containing a null byte could enable null prefix attacks where
+  certificate validators see a truncated CN. For example,
+  CN="evil.com\0.legitimate.com" might pass validation for
+  legitimate.com in vulnerable parsers (see CVE-2009-2408).
+
+recommendation: |
+  Validate CN, O, and OU against RFC 5280 constraints: maximum 64
+  characters for CN, reject null bytes and control characters, reject
+  empty strings.
+
+references:
+  - https://cwe.mitre.org/data/definitions/20.html

@@ -1,0 +1,38 @@
+id: CL-SEC-2026-0125
+title: "Credentials stored in plaintext in connection struct in cl-nats"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 5.5
+cwe: CWE-256
+
+project:
+  name: cl-nats
+  homepage: https://github.com/atgreen/cl-nats
+  affected-systems:
+    - cl-nats
+
+affected:
+  introduced-in: "46414e3255e86c5f23e15b6356df9f702f1f2d7f"
+  fixed-in:
+    commit: "074433b"
+    version: "1.0.0"
+  affected-dists: []
+    # cl-nats is not in Quicklisp or ocicl
+
+description: |
+  The connection struct stores user, pass, and auth-token as plaintext
+  strings for the lifetime of the connection. These credentials persist
+  in heap memory and may be exposed through core dumps, heap inspection
+  by debuggers, the CL inspector in development environments, or the
+  struct's default print-object method which prints all slots.
+
+recommendation: |
+  Override print-object for the connection struct to redact sensitive
+  fields. Consider a :credential-provider callback pattern so
+  credentials are fetched on demand and not stored persistently. Zero
+  out credential strings when the connection is closed.
+
+references:
+  - https://cwe.mitre.org/data/definitions/256.html

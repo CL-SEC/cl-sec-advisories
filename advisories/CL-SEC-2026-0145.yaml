@@ -1,0 +1,40 @@
+id: CL-SEC-2026-0145
+title: "KeyUsage unused-bits calculation incorrect for multi-byte bit strings in cl-x509"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+cvss-score: 5.3
+cwe: CWE-682
+
+project:
+  name: cl-x509
+  homepage: https://github.com/atgreen/cl-x509
+  affected-systems:
+    - cl-x509
+
+affected:
+  introduced-in: "09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
+  fixed-in:
+    commit: "2074636"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260123-09a0c1b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The Key Usage extension encoding uses a fragile unused-bits
+  calculation that only works for single-byte bit strings by
+  coincidence. The decipherOnly usage (bit 8 in RFC 5280) cannot be
+  encoded correctly because the code only produces one byte. When no
+  usages are specified, a meaningless extension is silently produced
+  with 7 unused bits and a zero byte.
+
+recommendation: |
+  Rewrite the unused-bits calculation to handle multi-byte bit strings.
+  Reject empty usage sets. Add decipherOnly to the supported usages.
+
+references:
+  - https://cwe.mitre.org/data/definitions/682.html

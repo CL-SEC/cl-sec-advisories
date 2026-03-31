@@ -1,0 +1,78 @@
+id: CL-SEC-2026-0002
+title: "Full request URI including credentials leaked in error messages"
+reported: 2026-03-31
+published: null  # null until coordinated disclosure completes
+severity: medium
+cvss: "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 5.5
+cwe: CWE-209  # Generation of Error Message Containing Sensitive Information
+
+project:
+  name: cl-completions
+  homepage: https://github.com/atgreen/cl-completions
+  affected-systems:
+    - completions
+
+affected:
+  introduced-in: "392c08c"  # 2025-10-25
+  fixed-in:
+    commit: "b63ba8e"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260331-580b54e"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: draft
+
+description: |
+  The safe-http-request function in cl-completions signals an error
+  condition that includes the full request URI obtained via
+  dex:request-uri:
+
+      (error "An HTTP request to ~S has failed (status=~A).~%~%~A"
+             (dex:request-uri e)
+             (dex:response-status e)
+             string-body)
+
+  When combined with CL-SEC-2026-0001 (Gemini API key in URL), this
+  leaks the API key into any error handler, log collector, or
+  condition-reporting mechanism that captures the error text.
+
+  Even without CL-SEC-2026-0001, this is independently a concern:
+  endpoint URLs may contain session tokens, internal hostnames, or
+  path-based routing information that should not appear in error output
+  visible to end users or forwarded to external error-tracking services.
+
+  This vulnerability predates the Gemini provider — it was introduced
+  when the error-handling wrapper was first added in 392c08c, affecting
+  all providers.
+
+recommendation: |
+  Strip query parameters from the URI before including it in error
+  messages:
+
+      (let* ((uri (princ-to-string (dex:request-uri e)))
+             (qpos (position #\? uri))
+             (safe-uri (if qpos (subseq uri 0 qpos) uri)))
+        (error "An HTTP request to ~S has failed (status=~A).~%~%~A"
+               safe-uri
+               (dex:response-status e)
+               string-body))
+
+  Alternatively, omit the URI entirely from the error message and log
+  it separately at a debug level that is not captured in production.
+
+related:
+  - CL-SEC-2026-0001  # API key in URL is the primary source of sensitive data in the URI
+
+references:
+  - https://cwe.mitre.org/data/definitions/209.html
+  - https://owasp.org/www-community/Improper_Error_Handling

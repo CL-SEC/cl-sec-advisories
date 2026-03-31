@@ -1,0 +1,49 @@
+id: CL-SEC-2026-0131
+title: "CSS comment bypass in style attribute sanitization in cl-sanitize-html"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+cvss-score: 6.1
+cwe: CWE-79
+
+project:
+  name: cl-sanitize-html
+  homepage: https://github.com/atgreen/cl-sanitize-html
+  affected-systems:
+    - sanitize-html
+
+affected:
+  introduced-in: "5fc4aa3cedcac77ffa770f7893dc3ad50a5b4a0f"
+  fixed-in:
+    commit: "10cc58c"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20251102-f5366ec"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The CSS sanitizer uses a naive semicolon-split parser and does not
+  strip CSS comments before performing danger checks. An attacker can
+  use CSS comments to break up dangerous keywords, e.g.,
+  "exp/**/ression(alert(1))" bypasses the check for "expression"
+  because the contiguous string does not appear in the value. After
+  the browser's CSS parser removes the comment, expression() executes
+  JavaScript in legacy Internet Explorer.
+
+  The email policy allows the style attribute globally on all allowed
+  tags, making this exploitable for any application using that policy.
+
+recommendation: |
+  Strip CSS comments (/* ... */) from CSS values before performing
+  danger checks. Also strip them from the entire CSS string before
+  parsing.
+
+references:
+  - https://cwe.mitre.org/data/definitions/79.html

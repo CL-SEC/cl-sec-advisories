@@ -1,0 +1,45 @@
+id: CL-SEC-2026-0120
+title: "Session cookie exposed in client-side JavaScript in cl-chat"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N"
+cvss-score: 6.8
+cwe: CWE-614
+
+project:
+  name: cl-chat
+  homepage: https://github.com/atgreen/cl-chat
+  affected-systems:
+    - web-chat
+  unaffected-systems:
+    - chat
+
+affected:
+  introduced-in: "787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
+  fixed-in:
+    commit: "d8b447c"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260309-787c4bc"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The Hunchentoot session cookie value is embedded directly in the HTML
+  page as a JavaScript variable and sent over the WebSocket connection.
+  Combined with the stored XSS vulnerability (CL-SEC-2026-0118), an
+  attacker who injects JavaScript can extract the session ID and hijack
+  another user's session, gaining access to their chat history and LLM
+  completer which may hold API keys. The session ID is also logged
+  server-side via log4cl.
+
+recommendation: |
+  Do not embed the session cookie in JavaScript. Use HTTP-only cookies
+  and authenticate WebSocket connections through the cookie mechanism.
+  Remove session ID logging or redact it. Set HttpOnly and Secure flags
+  on session cookies.
+
+references:
+  - https://cwe.mitre.org/data/definitions/614.html

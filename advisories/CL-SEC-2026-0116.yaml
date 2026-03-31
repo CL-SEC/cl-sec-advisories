@@ -1,0 +1,44 @@
+id: CL-SEC-2026-0116
+title: "Gemini API key leaked in URL query parameter in cl-chat"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 7.5
+cwe: CWE-598
+
+project:
+  name: cl-chat
+  homepage: https://github.com/atgreen/cl-chat
+  affected-systems:
+    - chat
+  unaffected-systems:
+    - web-chat
+
+affected:
+  introduced-in: "787c4bc0576fcfedbc7bff9b9fb7a7160c66a64d"
+  fixed-in:
+    commit: "b63ba8e"
+    version: "1.1.0"
+    note: "Fixed in upstream cl-completions v1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260309-787c4bc"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The Gemini completer in the cl-completions dependency embeds the API
+  key directly in the URL as a query parameter. This causes the key to
+  appear in HTTP access logs, proxy logs, error messages (the
+  safe-http-request wrapper includes the request URI in errors), and
+  debug stream output. By contrast, the OpenAI and Anthropic completers
+  correctly pass their keys via HTTP headers.
+
+recommendation: |
+  Pass the Gemini API key in a request header instead of the URL.
+  Google's Gemini API supports authentication via the x-goog-api-key
+  header as an alternative to the key= query parameter.
+
+references:
+  - https://cwe.mitre.org/data/definitions/598.html

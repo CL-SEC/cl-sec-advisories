@@ -1,0 +1,44 @@
+id: CL-SEC-2026-0144
+title: "No BasicConstraints enforcement for signing keys in cl-x509"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+cvss-score: 7.5
+cwe: CWE-295
+
+project:
+  name: cl-x509
+  homepage: https://github.com/atgreen/cl-x509
+  affected-systems:
+    - cl-x509
+
+affected:
+  introduced-in: "09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
+  fixed-in:
+    commit: "2074636"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260123-09a0c1b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The generate-signed-certificate function accepts any RSA key pair
+  as the signer with no verification that the signing key belongs to
+  a CA certificate with BasicConstraints CA=true. The extensions
+  parameter is entirely optional, so a certificate can be generated
+  with no extensions at all. Some implementations treat missing
+  BasicConstraints as CA=false, but others may not, creating
+  certificates that bypass path validation in lenient implementations.
+
+recommendation: |
+  When extensions is nil in generate-signed-certificate, default to a
+  sensible set (BasicConstraints CA=false, KeyUsage
+  digitalSignature+keyEncipherment). Consider adding an optional
+  :ca-cert parameter that validates the signing certificate has
+  CA=true.
+
+references:
+  - https://cwe.mitre.org/data/definitions/295.html

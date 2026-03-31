@@ -1,0 +1,43 @@
+id: CL-SEC-2026-0142
+title: "SAN DNS names not validated allowing wildcard and null-byte injection in cl-x509"
+reported: 2026-03-31
+published: null
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+cvss-score: 7.5
+cwe: CWE-20
+
+project:
+  name: cl-x509
+  homepage: https://github.com/atgreen/cl-x509
+  affected-systems:
+    - cl-x509
+
+affected:
+  introduced-in: "09a0c1bc4090e5b8b0f97712dd4fb52a01bdd0f5"
+  fixed-in:
+    commit: "2074636"
+    version: "1.1.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260123-09a0c1b"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  The SAN extension encoder accepts arbitrary DNS name strings without
+  validation. There is no check for null bytes (enabling null-prefix
+  attacks), malformed wildcards (*.*.example.com or foo*.example.com),
+  empty labels, excessively long labels (DNS limit: 63 characters per
+  label, 253 total), invalid characters, or non-ASCII characters
+  without IDN/punycode conversion. IPv6 addresses in IP SANs are
+  silently unsupported with no error.
+
+recommendation: |
+  Validate DNS names against RFC 952/1123 hostname rules and RFC 6125
+  wildcard rules. Reject null bytes, validate label lengths, and
+  restrict wildcard placement. Add IPv6 support for IP SANs or signal
+  a clear error.
+
+references:
+  - https://cwe.mitre.org/data/definitions/20.html

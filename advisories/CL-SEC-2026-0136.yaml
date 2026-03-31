@@ -1,0 +1,47 @@
+id: CL-SEC-2026-0136
+title: "No TLS certificate verification enforcement in cl-selfupdate"
+reported: 2026-03-31
+published: null
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+cvss-score: 8.1
+cwe: CWE-295
+
+project:
+  name: cl-selfupdate
+  homepage: https://github.com/atgreen/cl-selfupdate
+  affected-systems:
+    - cl-selfupdate
+
+affected:
+  introduced-in: "1b09d3e8e5fcab72c2c50c01f3a4c163a547b1a7"
+  fixed-in:
+    commit: "150b5d2"
+    version: "1.0.0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260120-1b09d3e"
+      last-affected: null
+      fixed-in: null
+
+description: |
+  Neither the dexador nor drakma HTTP backends explicitly configure TLS
+  certificate verification parameters. Whether certificates are verified
+  depends entirely on the underlying TLS library defaults. The library
+  loads pure-tls/cl+ssl-compat by default, and the legacy cl+ssl
+  fallback also does not verify certificates by default unless
+  explicitly configured. The library never sets :verify t or configures
+  CA certificates.
+
+  If TLS verification is not active, an attacker in a network position
+  can intercept update downloads and serve a malicious binary.
+
+recommendation: |
+  Explicitly configure TLS certificate verification in both HTTP
+  backends. For drakma, pass :verify :required and configure CA
+  certificates. For dexador, verify the underlying TLS library is
+  configured to validate certificates. Document and test the TLS
+  verification posture.
+
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
