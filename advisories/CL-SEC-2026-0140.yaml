@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0140
 title: "No validation of certificate validity period in cl-x509"
 reported: 2026-03-31
-published: null
+published: 2026-03-31
 severity: medium
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
 cvss-score: 5.3

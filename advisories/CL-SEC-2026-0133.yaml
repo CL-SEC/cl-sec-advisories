@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0133
 title: "Incomplete dangerous tag list allows content promotion from dangerous contexts in cl-sanitize-html"
 reported: 2026-03-31
-published: null
+published: 2026-03-31
 severity: high
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
 cvss-score: 6.1

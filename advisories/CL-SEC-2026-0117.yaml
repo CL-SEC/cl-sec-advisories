@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0117
 title: "API keys leaked via error messages and debug logging in cl-chat"
 reported: 2026-03-31
-published: null
+published: 2026-03-31
 severity: medium
 cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
 cvss-score: 6.5

@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0001
 title: "Gemini API key transmitted as URL query parameter"
 reported: 2026-03-31
-published: null  # null until coordinated disclosure completes
+published: 2026-03-31
 severity: high
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
 cvss-score: 7.5

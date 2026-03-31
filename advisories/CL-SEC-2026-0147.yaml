@@ -1,0 +1,79 @@
+id: CL-SEC-2026-0147
+title: "No client-side verification of downloaded package integrity in ocicl"
+reported: 2026-03-31
+published: 2026-03-31
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 7.4
+cwe: CWE-345
+
+project:
+  name: ocicl
+  homepage: https://github.com/ocicl/ocicl
+  affected-systems:
+    - ocicl
+
+affected:
+  introduced-in:  # 2023-05-16 (initial commit)
+    commit: "170aff0"
+    url: "https://github.com/ocicl/ocicl/commit/170aff0"
+  fixed-in:
+    commit: null
+    version: null
+    url: null
+  affected-dists:
+    - dist: ocicl
+      first-affected: null
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: draft
+
+description: |
+  When ocicl downloads a system package, it fetches an OCI manifest
+  containing layer digests, then retrieves the blob by that digest
+  URL. However, the client never independently verifies that the
+  received blob content actually hashes to the claimed SHA-256
+  digest.
+
+  The project documents GPG signature verification and sigstore
+  rekor transparency log integration in the README, but these are
+  entirely manual processes. The download-system, get-blob, and
+  download-and-install functions in src/ocicl.lisp perform no
+  cryptographic verification of package content before extracting
+  and installing it.
+
+  This means the client relies entirely on TLS transport security
+  and registry-side digest enforcement. If TLS is disabled (via
+  -k/--insecure flag or OCICL_INSECURE env var), or if the
+  registry itself is compromised, malicious packages can be
+  installed without detection. Even with TLS enabled, a
+  compromised or malicious registry can serve arbitrary content.
+
+  The ocicl.csv file records the manifest digest alongside each
+  installed system, but this digest is never verified against the
+  actual content on disk after extraction.
+
+recommendation: |
+  After downloading a blob, compute its SHA-256 hash using
+  ironclad (already a dependency) and compare it to the digest
+  from the manifest before extracting:
+
+    (let ((computed (ironclad:byte-array-to-hex-string
+                     (ironclad:digest-sequence :sha256 blob-bytes))))
+      (unless (string= computed expected-digest)
+        (error "Digest mismatch for ~A" system)))
+
+  Additionally, consider making sigstore/GPG verification opt-out
+  rather than opt-in, so that package authenticity is verified by
+  default.
+
+references:
+  - https://cwe.mitre.org/data/definitions/345.html
+  - https://github.com/opencontainers/distribution-spec/blob/main/spec.md

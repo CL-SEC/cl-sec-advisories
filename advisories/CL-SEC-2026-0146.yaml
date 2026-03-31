@@ -1,0 +1,70 @@
+id: CL-SEC-2026-0146
+title: "Shell command injection via unsanitized file paths in ocicl setup.lisp"
+reported: 2026-03-31
+published: 2026-03-31
+severity: high
+cvss: "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+cvss-score: 7.8
+cwe: CWE-78
+
+project:
+  name: ocicl
+  homepage: https://github.com/ocicl/ocicl
+  affected-systems:
+    - ocicl
+
+affected:
+  introduced-in:  # 2024-05-09
+    commit: "8d7cf01"
+    url: "https://github.com/ocicl/ocicl/commit/8d7cf01"
+  fixed-in:
+    commit: null
+    version: null
+    url: null
+  affected-dists:
+    - dist: ocicl
+      first-affected: null
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: draft
+
+description: |
+  The install-ocicl function in setup.lisp constructs shell command
+  strings using format directives with unsanitized pathname values,
+  then passes them to uiop:run-program as a single string (which
+  invokes a shell).
+
+  On line 98, the chmod command is built as:
+    (uiop:run-program (format nil "chmod +x ~A" path))
+  On lines 103-106, the ocicl setup invocation is built similarly:
+    (uiop:run-program (format nil "~A setup" path))
+
+  The destination directory is derived from the OCICL_PREFIX
+  environment variable (line 18). If OCICL_PREFIX contains shell
+  metacharacters (semicolons, backticks, $(), pipes, etc.), those
+  will be interpreted by the shell, resulting in arbitrary command
+  execution during the build/install process.
+
+  This is exploitable when a user sets OCICL_PREFIX to a value
+  controlled or influenced by an attacker, or when the path
+  contains spaces or special characters unintentionally.
+
+recommendation: |
+  Pass arguments as a list to uiop:run-program instead of
+  constructing a shell command string. For example:
+
+    (uiop:run-program (list "chmod" "+x" (namestring path)))
+
+  This avoids shell interpretation entirely. Apply the same fix
+  to the ocicl setup invocation on lines 103-106.
+
+references:
+  - https://cwe.mitre.org/data/definitions/78.html
+  - https://owasp.org/www-community/attacks/Command_Injection

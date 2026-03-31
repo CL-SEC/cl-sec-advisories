@@ -1,0 +1,77 @@
+id: CL-SEC-2026-0148
+title: "Untrusted search path via parent directory traversal for ocicl.csv"
+reported: 2026-03-31
+published: 2026-03-31
+severity: medium
+cvss: "CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:U/C:N/I:H/A:N"
+cvss-score: 5.0
+cwe: CWE-426
+
+project:
+  name: ocicl
+  homepage: https://github.com/ocicl/ocicl
+  affected-systems:
+    - ocicl
+    - ocicl-runtime
+
+affected:
+  introduced-in:  # 2024-10-17
+    commit: "df82b60"
+    url: "https://github.com/ocicl/ocicl/commit/df82b60"
+  fixed-in:
+    commit: null
+    version: null
+    url: null
+  affected-dists:
+    - dist: ocicl
+      first-affected: null
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: draft
+
+description: |
+  The find-workdir function in both src/ocicl.lisp (line 1603) and
+  runtime/ocicl-runtime.lisp (line 211) traverses parent directories
+  searching for an ocicl.csv or systems.csv file. When found, that
+  file determines which systems directory is used and which packages
+  are considered installed.
+
+  An attacker who can write files to a parent directory of the
+  user's working directory can place a malicious ocicl.csv that
+  redirects package resolution. For example, in shared filesystem
+  environments (/tmp, shared build directories, CI runners), an
+  attacker could place an ocicl.csv in a common ancestor directory
+  that maps system names to attacker-controlled package content.
+
+  When a user runs ocicl commands or loads packages via the
+  ocicl-runtime from any subdirectory beneath the attacker's
+  planted CSV, the malicious configuration takes precedence if no
+  local ocicl.csv exists. This could cause the runtime to load
+  attacker-supplied .asd and .lisp files, leading to arbitrary
+  code execution.
+
+  The OCICL_LOCAL_ONLY environment variable disables this
+  traversal behavior, but is not set by default.
+
+recommendation: |
+  Consider one or more of the following mitigations:
+
+  - Limit the upward traversal to a reasonable boundary (e.g.,
+    the user's home directory or a filesystem mount point).
+  - Warn the user when a CSV file is found in a directory other
+    than the current working directory.
+  - Skip directories that are world-writable or owned by a
+    different user.
+  - Document the OCICL_LOCAL_ONLY option more prominently as a
+    security hardening measure.
+
+references:
+  - https://cwe.mitre.org/data/definitions/426.html
+  - https://cwe.mitre.org/data/definitions/427.html

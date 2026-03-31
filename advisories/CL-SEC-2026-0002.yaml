@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0002
 title: "Full request URI including credentials leaked in error messages"
 reported: 2026-03-31
-published: null  # null until coordinated disclosure completes
+published: 2026-03-31
 severity: medium
 cvss: "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
 cvss-score: 5.5

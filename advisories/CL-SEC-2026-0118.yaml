@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0118
 title: "Stored cross-site scripting via unsanitized WebSocket messages in cl-chat"
 reported: 2026-03-31
-published: null
+published: 2026-03-31
 severity: high
 cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N"
 cvss-score: 9.0
