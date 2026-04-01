@@ -24,8 +24,8 @@ affected:
   affected-dists:
     - dist: ocicl
       first-affected: "20260215-d78526b"
-      last-affected: null
-      fixed-in: null
+      last-affected: "20260215-d78526b"
+      fixed-in: "20260331-77bef3c"
 
 description: |
   Although pure-tls exports zeroize and with-zeroized-vector, these
