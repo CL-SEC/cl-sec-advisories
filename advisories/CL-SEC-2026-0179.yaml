@@ -1,0 +1,72 @@
+id: CL-SEC-2026-0179
+title: "trivia read pattern calls READ-FROM-STRING without binding *READ-EVAL* to NIL"
+reported: 2026-03-31
+published: 2026-03-31
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+cvss-score: 9.8
+cwe: CWE-94
+
+project:
+  name: trivia
+  homepage: https://github.com/guicho271828/trivia
+  affected-systems:
+    - trivia
+    - trivia.level2
+
+affected:
+  introduced-in:
+    commit: "3277444"
+    url: "https://github.com/guicho271828/trivia/commit/3277444"
+  fixed-in: null  # PR submitted: https://github.com/guicho271828/trivia/pull/154
+  affected-dists:
+    - dist: ocicl
+      first-affected: null
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: 2026-04-01
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: disclosed
+
+description: |
+  The `read` pattern in trivia (level2/derived2.lisp, lines 32-44)
+  expands to a runtime call to READ-FROM-STRING on the value being
+  matched, without binding *READ-EVAL* to NIL.  Common Lisp's reader
+  evaluates #.(form) reader macros at read time when *READ-EVAL* is T
+  (the default), which means an attacker who controls the string being
+  matched can achieve arbitrary code execution.
+
+  For example:
+
+      (match user-supplied-string
+        ((read x) (format t "Parsed: ~a" x)))
+
+  If user-supplied-string is "#.(delete-file \"/etc/important\")", the
+  reader will execute the deletion before the match even completes.
+
+  The pattern also silently swallows END-OF-FILE and PARSE-ERROR
+  conditions, masking failed exploitation attempts and making the
+  vulnerability harder to detect in logs.
+
+recommendation: |
+  Bind *READ-EVAL* to NIL around the READ-FROM-STRING call:
+
+      `(guard1 (,it :type string) (stringp ,it)
+               (let ((*read-eval* nil))
+                 (handler-case (read-from-string ,it)
+                   (end-of-file ())
+                   (parse-error ()))) ,pattern)
+
+  Additionally, consider documenting that the `read` pattern should
+  never be used on untrusted input even with this fix, as the CL
+  reader has a large attack surface beyond just *READ-EVAL*.
+
+references:
+  - https://cwe.mitre.org/data/definitions/94.html
+  - http://www.lispworks.com/documentation/HyperSpec/Body/v_rd_eva.htm
+  - https://github.com/guicho271828/trivia/pull/154
