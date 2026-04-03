@@ -3,8 +3,8 @@ title: "Credentials stored in plaintext in connection struct in cl-nats"
 reported: 2026-03-31
 published: 2026-03-31
 severity: low
-cvss: "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
-cvss-score: 5.5
+cvss: "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N"
+cvss-score: 2.5
 cwe: CWE-256
 
 project:

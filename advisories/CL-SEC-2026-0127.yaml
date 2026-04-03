@@ -3,8 +3,8 @@ title: "Server-supplied connect_urls enable SSRF with credential forwarding in c
 reported: 2026-03-31
 published: 2026-03-31
 severity: low
-cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N"
-cvss-score: 8.6
+cvss: "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:N/A:N"
+cvss-score: 2.6
 cwe: CWE-918
 
 project:

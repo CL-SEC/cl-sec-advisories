@@ -3,8 +3,8 @@ title: "Missing TLS 1.3 downgrade sentinel check in pure-tls client handshake"
 reported: 2026-03-31
 published: 2026-03-31
 severity: medium
-cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
-cvss-score: 7.4
+cvss: "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 6.8
 cwe: CWE-757
 
 project:
