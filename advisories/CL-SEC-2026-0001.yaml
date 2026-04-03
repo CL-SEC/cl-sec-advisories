@@ -24,8 +24,8 @@ affected:
   affected-dists:
     - dist: ocicl
       first-affected: "20260309-2f8aa54"  # first snapshot containing the vuln
-      last-affected: null                  # still affected in latest
-      fixed-in: null
+      last-affected: null
+      fixed-in: 20260401-272ec4d
 
 disclosure:
   maintainer-contact: null

@@ -25,7 +25,7 @@ affected:
     - dist: ocicl
       first-affected: "20260120-1b09d3e"
       last-affected: null
-      fixed-in: null
+      fixed-in: 20260401-e4f32f0
 
 description: |
   The temporary directory used for downloads is constructed with a

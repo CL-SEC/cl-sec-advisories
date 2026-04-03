@@ -25,7 +25,7 @@ affected:
     - dist: ocicl
       first-affected: "20260123-09a0c1b"
       last-affected: null
-      fixed-in: null
+      fixed-in: 20260401-60d7969
 
 description: |
   The encode-name function passes CN, O, and OU values directly to

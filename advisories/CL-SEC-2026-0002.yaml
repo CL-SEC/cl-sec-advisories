@@ -25,7 +25,7 @@ affected:
     - dist: ocicl
       first-affected: "20260331-580b54e"
       last-affected: null
-      fixed-in: null
+      fixed-in: 20260401-272ec4d
 
 disclosure:
   maintainer-contact: null
