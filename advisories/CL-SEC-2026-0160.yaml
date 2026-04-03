@@ -1,11 +1,11 @@
 id: CL-SEC-2026-0160
-title: "Remote code execution via read-from-string on URI port number"
+title: "Denial of service via read-from-string on URI port number"
 reported: 2026-03-31
 published: 2026-03-31
-severity: critical
-cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"
-cvss-score: 10.0
-cwe: CWE-94
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-20
 
 project:
   name: puri
@@ -40,25 +40,48 @@ description: |
 
       (setq port (read-from-string port))
 
-  read-from-string invokes the full Lisp reader, which can execute
-  arbitrary code via the #. reader macro when *read-eval* is T (the
-  default).  An attacker who can supply a URI to any application using
-  puri can achieve arbitrary code execution.  For example:
+  read-from-string invokes the full Lisp reader instead of a numeric
+  parser, enabling denial of service through parse-uri:
 
-      http://evil.com:#.(uiop:run-program "id" :output :string)/path
+  1. Floating-point overflow.  The URI state machine's port tokenizer
+     accepts digits, dots, and letters such as 'e', so a URI like:
 
-  The numberp check after the read only fires after the reader has
-  already executed any side effects.  Even with *read-eval* bound to
-  NIL, read-from-string can construct arbitrary Lisp objects that are
-  not numbers, causing type confusion downstream.
+         http://example.com:1e100000000000000/
+
+     delivers the string "1e100000000000000" to read-from-string,
+     which signals a floating-point-overflow condition in most
+     implementations, crashing any handler without an enclosing
+     handler-case.
+
+  2. Bignum allocation.  A port string containing millions of digit
+     characters (e.g. http://example.com:111...111/) causes
+     read-from-string to allocate an arbitrarily large bignum,
+     consuming CPU and memory.  The resulting integer passes both
+     the numberp and plusp checks, so no error is raised.
+
+  Additionally, no port range validation is performed.  Any positive
+  number is accepted, including values far outside the valid TCP port
+  range of 1-65535.
+
+  Note: while read-from-string can also execute arbitrary code via the
+  #. reader macro when *read-eval* is T (the default), the URI parser's
+  state machine treats # as a fragment delimiter, preventing #. from
+  reaching the port code path through parse-uri.  The #. vector is only
+  reachable if application code passes unsanitized strings to
+  read-from-string outside of parse-uri.
 
 recommendation: |
-  Replace read-from-string with parse-integer for port number parsing:
+  Replace read-from-string with parse-integer and add port range
+  validation:
 
       (setq port (parse-integer port :junk-allowed nil))
+      (when (not (<= 1 port 65535))
+        (error "port not in valid range: ~d." port))
 
-  This parses only decimal integers and has no code execution risk.
+  parse-integer accepts only decimal integers, rejecting floats and
+  reader macros.  The range check prevents bignum allocation abuse
+  and ensures only valid TCP port numbers are accepted.
 
 references:
-  - https://cwe.mitre.org/data/definitions/94.html
+  - https://cwe.mitre.org/data/definitions/20.html
   - https://github.com/llibra/puri/pull/2
