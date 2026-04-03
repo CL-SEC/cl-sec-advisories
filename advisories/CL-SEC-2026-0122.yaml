@@ -2,7 +2,7 @@ id: CL-SEC-2026-0122
 title: "No TLS certificate verification configuration in cl-nats"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
+severity: low
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
 cvss-score: 7.4
 cwe: CWE-295
@@ -23,6 +23,12 @@ affected:
     url: "https://github.com/atgreen/cl-nats/commit/074433b"
   affected-dists: []
     # cl-nats is not in Quicklisp or ocicl
+
+audit:
+  verdict: disputed
+  original-severity: high
+  notes: |
+    pure-tls verifies certificates by default in the current environment. The MITM vulnerability framing is not established.
 
 description: |
   TLS connections are established via pure-tls:make-tls-client-stream

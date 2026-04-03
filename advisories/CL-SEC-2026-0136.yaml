@@ -2,7 +2,7 @@ id: CL-SEC-2026-0136
 title: "No TLS certificate verification enforcement in cl-selfupdate"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
+severity: medium
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
 cvss-score: 8.1
 cwe: CWE-295
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260120-1b09d3e"
       last-affected: null
       fixed-in: 20260401-e4f32f0
+
+audit:
+  verdict: severity-adjusted
+  original-severity: high
+  notes: |
+    Drakma backend uses :verify :required. Exposure depends on backend choice and TLS configuration. Not a blanket library-wide MITM.
 
 description: |
   Neither the dexador nor drakma HTTP backends explicitly configure TLS

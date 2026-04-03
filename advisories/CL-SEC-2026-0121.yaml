@@ -2,7 +2,7 @@ id: CL-SEC-2026-0121
 title: "Credentials sent in cleartext over non-TLS connections in cl-nats"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
+severity: medium
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
 cvss-score: 5.9
 cwe: CWE-319
@@ -23,6 +23,12 @@ affected:
     url: "https://github.com/atgreen/cl-nats/commit/074433b"
   affected-dists: []
     # cl-nats is not in Quicklisp or ocicl
+
+audit:
+  verdict: severity-adjusted
+  original-severity: high
+  notes: |
+    Sending credentials over non-TLS is an obvious consequence of choosing a non-TLS nats:// connection. Go nats.go and Python nats-py behave identically.
 
 description: |
   The build-connect-json function unconditionally includes user, pass,

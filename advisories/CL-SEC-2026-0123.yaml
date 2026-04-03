@@ -2,7 +2,7 @@ id: CL-SEC-2026-0123
 title: "NATS protocol injection via unsanitized subject and reply-to fields in cl-nats"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
+severity: medium
 cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
 cvss-score: 8.1
 cwe: CWE-93
@@ -23,6 +23,12 @@ affected:
     url: "https://github.com/atgreen/cl-nats/commit/074433b"
   affected-dists: []
     # cl-nats is not in Quicklisp or ocicl
+
+audit:
+  verdict: severity-adjusted
+  original-severity: high
+  notes: |
+    Depends on application feeding attacker-controlled data into a low-level messaging API. Current code now validates, confirming prior risk.
 
 description: |
   Subject names, reply-to addresses, and queue group names are

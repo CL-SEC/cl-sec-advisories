@@ -2,7 +2,7 @@ id: CL-SEC-2026-0134
 title: "Checksum validation optional and silently skipped in cl-selfupdate"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
+severity: medium
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
 cvss-score: 8.1
 cwe: CWE-354
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260120-1b09d3e"
       last-affected: null
       fixed-in: 20260401-e4f32f0
+
+audit:
+  verdict: severity-adjusted
+  original-severity: high
+  notes: |
+    Bundles several complaints. Missing signature verification is a hardening gap, but not every checksum-only auto-updater should be treated as critical integrity failure.
 
 description: |
   The SHA256 validation system has multiple weaknesses. If no checksum

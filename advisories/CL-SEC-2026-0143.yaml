@@ -2,7 +2,7 @@ id: CL-SEC-2026-0143
 title: "Private key material not zeroized in memory in cl-x509"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: low
 cvss: "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N"
 cvss-score: 4.7
 cwe: CWE-316
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260123-09a0c1b"
       last-affected: null
       fixed-in: 20260401-60d7969
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    GC behavior limits what zeroization can guarantee in any managed-memory language. Meaningful hygiene but overstated as exploitable vulnerability.
 
 description: |
   RSA private key components (d, p, q, dp, dq, qinv) are returned as

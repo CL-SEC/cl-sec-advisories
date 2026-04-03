@@ -2,7 +2,7 @@ id: CL-SEC-2026-0117
 title: "API keys leaked via error messages and debug logging in cl-chat"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: informational
 cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
 cvss-score: 6.5
 cwe: CWE-532
@@ -28,6 +28,12 @@ affected:
       first-affected: "20260309-787c4bc"
       last-affected: null
       fixed-in: null
+
+audit:
+  verdict: withdrawn
+  original-severity: medium
+  notes: |
+    Advisory text describes code paths (safe-http-request, Gemini URI leakage) not found in cl-chat. The project's own fix notes describe a different issue (Hunchentoot error/backtrace exposure).
 
 description: |
   The safe-http-request error handler includes the full request URI in

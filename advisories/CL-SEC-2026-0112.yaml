@@ -2,7 +2,7 @@ id: CL-SEC-2026-0112
 title: "Missing TLS 1.3 downgrade sentinel check in pure-tls client handshake"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
+severity: medium
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
 cvss-score: 7.4
 cwe: CWE-757
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260215-d78526b"
       last-affected: "20260215-d78526b"
       fixed-in: "20260331-77bef3c"
+
+audit:
+  verdict: severity-adjusted
+  original-severity: high
+  notes: |
+    pure-tls only supports TLS 1.3 and rejects non-1.3 negotiation, which substantially limits the practical downgrade scenario. Protocol-compliance and defense-in-depth, not strong standalone high-severity.
 
 description: |
   RFC 8446 Section 4.1.3 requires TLS 1.3 clients to check the last

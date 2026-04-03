@@ -2,7 +2,7 @@ id: CL-SEC-2026-0126
 title: "Credential leakage in error messages and conditions in cl-nats"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: low
 cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
 cvss-score: 6.5
 cwe: CWE-209
@@ -23,6 +23,12 @@ affected:
     url: "https://github.com/atgreen/cl-nats/commit/074433b"
   affected-dists: []
     # cl-nats is not in Quicklisp or ocicl
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    Speculative exploit narrative. Current code reports host/port and generic write failures, not the CONNECT JSON containing credentials.
 
 description: |
   The connection failure path formats the last error into a user-visible

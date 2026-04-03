@@ -2,7 +2,7 @@ id: CL-SEC-2026-0127
 title: "Server-supplied connect_urls enable SSRF with credential forwarding in cl-nats"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: low
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N"
 cvss-score: 8.6
 cwe: CWE-918
@@ -23,6 +23,12 @@ affected:
     url: "https://github.com/atgreen/cl-nats/commit/074433b"
   affected-dists: []
     # cl-nats is not in Quicklisp or ocicl
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    Server discovery is normal NATS clustering behavior. Trust-model and policy issue, not classic SSRF. *allow-discovered-servers* now exists for control.
 
 description: |
   During handshake and on reconnect, the client merges server-supplied

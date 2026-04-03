@@ -2,7 +2,7 @@ id: CL-SEC-2026-0131
 title: "CSS comment bypass in style attribute sanitization in cl-sanitize-html"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
+severity: medium
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
 cvss-score: 6.1
 cwe: CWE-79
@@ -30,6 +30,12 @@ affected:
       first-affected: "2026-01-01"
       last-affected: null
       fixed-in: null
+
+audit:
+  verdict: severity-adjusted
+  original-severity: high
+  notes: |
+    Relies on legacy IE expression() behavior, sharply limiting modern practical impact. Real parsing gap but modern browsers are not affected.
 
 description: |
   The CSS sanitizer uses a naive semicolon-split parser and does not

@@ -2,7 +2,7 @@ id: CL-SEC-2026-0144
 title: "No BasicConstraints enforcement for signing keys in cl-x509"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: informational
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
 cvss-score: 7.5
 cwe: CWE-295
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260123-09a0c1b"
       last-affected: null
       fixed-in: 20260401-60d7969
+
+audit:
+  verdict: withdrawn
+  original-severity: low
+  notes: |
+    Withdrawn per updated audit. cl-x509 is a certificate generation library, not a CA policy engine. Generating whatever certificate structure the caller requests is expected behavior — comparable to Go x509.CreateCertificate or Python cryptography's CertificateBuilder.
 
 description: |
   The generate-signed-certificate function accepts any RSA key pair

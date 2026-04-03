@@ -2,7 +2,7 @@ id: CL-SEC-2026-0141
 title: "No CN/subject field validation allows null-byte injection in cl-x509"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: low
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
 cvss-score: 7.5
 cwe: CWE-20
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260123-09a0c1b"
       last-affected: null
       fixed-in: 20260401-60d7969
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    Generation-side hardening against null-prefix ambiguity. Impact depends on whether downstream certificate consumers are vulnerable to the legacy attack.
 
 description: |
   The encode-name function passes CN, O, and OU values directly to

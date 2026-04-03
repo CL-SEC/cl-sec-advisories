@@ -2,7 +2,7 @@ id: CL-SEC-2026-0147
 title: "No client-side verification of downloaded package integrity in ocicl"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
+severity: medium
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
 cvss-score: 7.4
 cwe: CWE-345
@@ -34,6 +34,12 @@ disclosure:
   disclosure-deadline: null
   cve-id: null
   status: draft
+
+audit:
+  verdict: severity-adjusted
+  original-severity: high
+  notes: |
+    Client operates within OCI distribution model where content-addressed digests identify content. Advisory overstates if implying no integrity linkage at all.
 
 description: |
   When ocicl downloads a system package, it fetches an OCI manifest

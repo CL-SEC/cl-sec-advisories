@@ -2,7 +2,7 @@ id: CL-SEC-2026-0138
 title: "No protection against version downgrade attacks in cl-selfupdate"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: low
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N"
 cvss-score: 5.9
 cwe: CWE-757
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260120-1b09d3e"
       last-affected: null
       fixed-in: 20260401-e4f32f0
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    No-downgrade protection now exists on high-level update-self path. Should be scoped to older versions or lower-level API, not described as present broad flaw.
 
 description: |
   The download-update function does not perform any version comparison.

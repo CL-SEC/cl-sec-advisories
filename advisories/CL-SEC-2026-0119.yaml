@@ -2,7 +2,7 @@ id: CL-SEC-2026-0119
 title: "WebSocket and HTTP servers lack TLS encryption in cl-chat"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: low
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
 cvss-score: 7.4
 cwe: CWE-319
@@ -28,6 +28,12 @@ affected:
       first-affected: "20260309-787c4bc"
       last-affected: null
       fixed-in: null
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    Deployment/defaults issue in a simple demo-style chat app. Not a hidden vulnerability in a reusable security library.
 
 description: |
   The WebSocket connection is hardcoded to use unencrypted ws://

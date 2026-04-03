@@ -2,7 +2,7 @@ id: CL-SEC-2026-0115
 title: "Secret key material not zeroized after use in pure-tls"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: low
 cvss: "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N"
 cvss-score: 4.7
 cwe: CWE-226
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260215-d78526b"
       last-affected: "20260215-d78526b"
       fixed-in: "20260331-77bef3c"
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    Zeroization in GC'd Lisp is inherently best-effort. The library documents this limitation. Hardening gap, not medium-severity vulnerability. Go, Java, and Python face identical GC limitations.
 
 description: |
   Although pure-tls exports zeroize and with-zeroized-vector, these

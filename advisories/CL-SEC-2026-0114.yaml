@@ -2,7 +2,7 @@ id: CL-SEC-2026-0114
 title: "Non-cryptographic PRNG used for ticket age obfuscation in pure-tls"
 reported: 2026-03-31
 published: 2026-03-31
-severity: medium
+severity: low
 cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"
 cvss-score: 3.7
 cwe: CWE-338
@@ -26,6 +26,12 @@ affected:
       first-affected: "20260215-d78526b"
       last-affected: "20260215-d78526b"
       fixed-in: "20260331-77bef3c"
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    Low-impact cryptographic hygiene issue. Using non-CSPRNG for ticket_age_add is weak but has limited practical impact on confidentiality.
 
 description: |
   The server generates ticket_age_add values using Common Lisp's
