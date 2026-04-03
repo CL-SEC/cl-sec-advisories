@@ -101,11 +101,18 @@ def parse_advisory_full(path):
                 adv["project-name"] = yval(val)
             elif key == "homepage":
                 adv["homepage"] = yval(val)
+            elif key == "status":
+                adv["status"] = yval(val)
+            elif key == "verdict":
+                adv["audit-verdict"] = yval(val)
             elif key == "description" and val == "|":
                 current_block = "description"
                 block_buf = []
             elif key == "recommendation" and val == "|":
                 current_block = "recommendation"
+                block_buf = []
+            elif key == "notes" and val == "|":
+                current_block = "audit-notes"
                 block_buf = []
 
         # Indent 4: affected-systems, unaffected-systems, fixed-in/introduced-in sub-fields
@@ -165,11 +172,33 @@ def esc(s):
 
 def severity_class(sev):
     return {"critical": "severity-critical", "high": "severity-high",
-            "medium": "severity-medium", "low": "severity-low"}.get(sev, "")
+            "medium": "severity-medium", "low": "severity-low",
+            "informational": "severity-info"}.get(sev, "")
 
 
 def severity_order(sev):
-    return {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(sev, 4)
+    return {"critical": 0, "high": 1, "medium": 2, "low": 3,
+            "informational": 4}.get(sev, 5)
+
+
+def get_status_info(a):
+    """Determine display status from advisory fields.
+
+    Returns (label, css_class) tuple.
+    """
+    verdict = a.get("audit-verdict", "")
+    status = a.get("status", "")
+    has_fix = bool(a.get("fixed-commit") or a.get("fixed-version"))
+
+    if verdict == "withdrawn" or status == "withdrawn":
+        return ("Withdrawn", "status-withdrawn")
+    if verdict == "disputed" or status == "disputed":
+        if has_fix:
+            return ("Fixed", "status-fixed")
+        return ("Disputed", "status-disputed")
+    if has_fix:
+        return ("Fixed", "status-fixed")
+    return ("Open", "status-open")
 
 
 _md = markdown.Markdown(extensions=["fenced_code", "tables"])
@@ -186,6 +215,7 @@ def build_modal(a):
     """Build modal HTML for one advisory."""
     aid = esc(a.get("id", ""))
     sev = a.get("severity", "")
+    status_label, status_css = get_status_info(a)
 
     cwe = a.get("cwe", "")
     cwe_html = ""
@@ -221,6 +251,21 @@ def build_modal(a):
             fix_html += f' (v{esc(a["fixed-version"])})'
     elif a.get("fixed-commit"):
         fix_html = f'<code>{esc(a["fixed-commit"])}</code>'
+    elif a.get("fixed-version"):
+        fix_html = f'v{esc(a["fixed-version"])}'
+
+    # Audit notes
+    audit_html = ""
+    audit_notes = a.get("audit-notes", "")
+    verdict = a.get("audit-verdict", "")
+    if verdict or audit_notes:
+        audit_html = '<div class="section audit-section">'
+        audit_html += '<h3>Audit</h3>'
+        if verdict:
+            audit_html += f'<p><strong>Verdict:</strong> <span class="badge {status_css}">{esc(verdict)}</span></p>'
+        if audit_notes:
+            audit_html += desc_to_html(audit_notes)
+        audit_html += '</div>'
 
     return f"""<div id="modal-{aid}" class="modal" onclick="if(event.target===this)closeModal()">
   <div class="modal-content">
@@ -229,6 +274,7 @@ def build_modal(a):
         <span class="modal-id">{aid}</span>
         <span class="badge {severity_class(sev)}">{sev.upper()}</span>
         <span class="badge cvss">CVSS {esc(str(a.get("cvss-score", "")))}</span>
+        <span class="badge {status_css}">{status_label}</span>
       </div>
       <button class="close-btn" onclick="closeModal()">&times;</button>
     </div>
@@ -245,7 +291,7 @@ def build_modal(a):
       <h3>Description</h3>
       {desc_to_html(a.get("description", ""))}
     </div>
-    {f'<div class="section"><h3>Recommendation</h3>{desc_to_html(a.get("recommendation", ""))}</div>' if a.get("recommendation") else ''}
+    {audit_html}
   </div>
 </div>"""
 
@@ -253,6 +299,10 @@ def build_modal(a):
 def build_html(advisories):
     rows = []
     modals = []
+
+    # Count statuses for stats
+    status_counts = {"Fixed": 0, "Open": 0, "Withdrawn": 0, "Disputed": 0}
+
     for a in sorted(advisories, key=lambda x: (severity_order(x.get("severity", "")),
                                                  -(float(x.get("cvss-score") or 0)))):
         sev = a.get("severity", "")
@@ -261,6 +311,9 @@ def build_html(advisories):
         homepage = a.get("homepage", "")
         project = a.get("project-name", "")
         aid = a.get("id", "")
+        status_label, status_css = get_status_info(a)
+
+        status_counts[status_label] = status_counts.get(status_label, 0) + 1
 
         rows.append(f"""        <tr onclick="openModal('{aid}')" style="cursor:pointer">
           <td><strong>{esc(aid)}</strong></td>
@@ -268,7 +321,7 @@ def build_html(advisories):
           <td class="{severity_class(sev)}">{sev.upper()}</td>
           <td>{esc(str(score))}</td>
           <td>{esc(a.get("title", ""))}</td>
-          <td>{esc(cwe)}</td>
+          <td><span class="status-pill {status_css}">{status_label}</span></td>
           <td>{esc(a.get("published", "") or "")}</td>
         </tr>""")
 
@@ -276,6 +329,11 @@ def build_html(advisories):
 
     table_rows = "\n".join(rows)
     modal_html = "\n".join(modals)
+
+    n_fixed = status_counts.get("Fixed", 0)
+    n_open = status_counts.get("Open", 0)
+    n_withdrawn = status_counts.get("Withdrawn", 0)
+    n_disputed = status_counts.get("Disputed", 0)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -300,6 +358,8 @@ def build_html(advisories):
     .stat.high .number {{ color: #f57c00; }}
     .stat.medium .number {{ color: #fbc02d; }}
     .stat.low .number {{ color: #388e3c; }}
+    .stat.fixed .number {{ color: #1565c0; }}
+    .stat.open .number {{ color: #d32f2f; }}
     table {{ background: var(--card); border-radius: 8px; overflow: hidden;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
     td, th {{ padding: 8px 12px; font-size: 14px; }}
@@ -308,9 +368,18 @@ def build_html(advisories):
     .severity-high {{ color: #f57c00; font-weight: bold; }}
     .severity-medium {{ color: #f9a825; }}
     .severity-low {{ color: #388e3c; }}
+    .severity-info {{ color: #9e9e9e; }}
     a {{ color: #1565c0; text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
     .footer {{ margin-top: 30px; color: #999; font-size: 12px; text-align: center; }}
+
+    /* Status pills */
+    .status-pill {{ display: inline-block; padding: 2px 10px; border-radius: 12px;
+                    font-size: 12px; font-weight: 600; white-space: nowrap; }}
+    .status-fixed {{ background: #e3f2fd; color: #1565c0; }}
+    .status-open {{ background: #fce4ec; color: #c62828; }}
+    .status-withdrawn {{ background: #f5f5f5; color: #9e9e9e; text-decoration: line-through; }}
+    .status-disputed {{ background: #fff3e0; color: #e65100; }}
 
     /* Modal */
     .modal {{ display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -332,7 +401,12 @@ def build_html(advisories):
     .badge.severity-high {{ background: #ffe0b2; color: #e65100; }}
     .badge.severity-medium {{ background: #fff9c4; color: #f57f17; }}
     .badge.severity-low {{ background: #c8e6c9; color: #1b5e20; }}
+    .badge.severity-info {{ background: #f5f5f5; color: #9e9e9e; }}
     .badge.cvss {{ background: #e8eaf6; color: #283593; }}
+    .badge.status-fixed {{ background: #e3f2fd; color: #1565c0; }}
+    .badge.status-open {{ background: #fce4ec; color: #c62828; }}
+    .badge.status-withdrawn {{ background: #f5f5f5; color: #9e9e9e; }}
+    .badge.status-disputed {{ background: #fff3e0; color: #e65100; }}
     .modal-content h2 {{ margin: 10px 0 15px; font-size: 20px; }}
     .meta {{ background: #f5f5f5; padding: 12px 16px; border-radius: 8px;
              margin-bottom: 20px; font-size: 14px; line-height: 1.8; }}
@@ -344,6 +418,9 @@ def build_html(advisories):
     .section pre {{ background: #263238; color: #eeffff; padding: 12px 16px; border-radius: 6px;
                     overflow-x: auto; font-size: 13px; }}
     .section code {{ font-size: 13px; }}
+    .audit-section {{ background: #fffde7; padding: 16px; border-radius: 8px;
+                      border-left: 4px solid #fbc02d; }}
+    .audit-section h3 {{ border-bottom-color: #fbc02d; }}
   </style>
 </head>
 <body>
@@ -368,6 +445,14 @@ def build_html(advisories):
         <div class="number">{sum(1 for a in advisories if a.get("severity") == "low")}</div>
         <div class="label">Low</div>
       </div>
+      <div class="stat fixed">
+        <div class="number">{n_fixed}</div>
+        <div class="label">Fixed</div>
+      </div>
+      <div class="stat open">
+        <div class="number">{n_open}</div>
+        <div class="label">Open</div>
+      </div>
       <div class="stat">
         <div class="number">{len(advisories)}</div>
         <div class="label">Total</div>
@@ -382,7 +467,7 @@ def build_html(advisories):
           <th>Severity</th>
           <th>CVSS</th>
           <th>Title</th>
-          <th>CWE</th>
+          <th>Status</th>
           <th>Published</th>
         </tr>
       </thead>
