@@ -1,0 +1,68 @@
+id: CL-SEC-2026-0197
+title: "Unbounded memory allocation in protobuf length-delimited field decoding"
+reported: 2026-04-03
+published: 2026-04-03
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-770  # Allocation of Resources Without Limits or Throttling
+
+project:
+  name: ag-proto
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-proto
+
+affected:
+  introduced-in:
+    commit: "f76354d"
+    url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
+  fixed-in:
+    commit: "8e65f35"
+    version: "1.4.0"
+    url: "https://github.com/atgreen/ag-gRPC/commit/8e65f35"
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  The ag-proto library's decode-length-delimited-from-stream function
+  (wire-format.lisp:293-299) allocates a byte vector based on a length
+  value decoded from the input stream:
+
+      (let* ((length (decode-varint-from-stream stream))
+             (data (make-array length :element-type '(unsigned-byte 8))))
+        (read-sequence data stream)
+        data)
+
+  The varint-decoded length can be up to 2^63.  A malicious protobuf
+  message can specify an enormous length for a string, bytes, or
+  embedded message field, causing the decoder to attempt allocating
+  gigabytes of memory.
+
+  This affects all deserialization paths including string decoding
+  (decode-string-from-stream, line 319-321) and any generated message
+  deserializer that processes length-delimited fields.
+
+  Additionally, decode-field-tag-from-stream (line 361-376) lacks the
+  shift > 63 check present in decode-varint-from-stream, allowing a
+  malicious input with continuous high-bit-set bytes to cause unbounded
+  loop iterations.
+
+recommendation: |
+  1. Add a configurable maximum message size (e.g., 64 MB default)
+     and check the decoded length against it before allocation.
+  2. Add the shift > 63 overflow check to decode-field-tag-from-stream.
+  3. Consider also validating that the decoded length does not exceed
+     the remaining bytes in the stream when the stream length is known.
+
+references:
+  - https://cwe.mitre.org/data/definitions/770.html
+  - https://protobuf.dev/programming-guides/encoding/

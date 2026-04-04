@@ -2,9 +2,9 @@ id: CL-SEC-2026-0179
 title: "trivia read pattern calls READ-FROM-STRING without binding *READ-EVAL* to NIL"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
-cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
-cvss-score: 8.1
+severity: informational
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:N"
+cvss-score: 0.0
 cwe: CWE-94
 
 project:
@@ -31,7 +31,17 @@ disclosure:
   maintainer-response: null
   disclosure-deadline: null
   cve-id: null
-  status: disclosed
+  status: disputed
+
+audit:
+  verdict: disputed
+  original-severity: high
+  notes: |
+    Downgraded to informational. The `read` pattern is a compile-time macro that expands
+    into code the developer explicitly wrote. Using it on untrusted input is a developer
+    choice, not a hidden trap — equivalent to calling read-from-string directly. The
+    *read-eval* nil binding was merged upstream as good defense-in-depth hygiene (PR #154),
+    but the original behavior was working-as-designed, not a vulnerability in trivia itself.
 
 description: |
   The `read` pattern in trivia (level2/derived2.lisp, lines 32-44)
