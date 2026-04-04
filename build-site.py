@@ -207,8 +207,12 @@ def desc_to_html(desc):
     """Convert advisory description/recommendation markdown to HTML."""
     if not desc:
         return ""
+    # Escape '#' at start of lines that aren't intended as markdown headings —
+    # e.g. Lisp's #. reader macro.  Lines inside fenced code blocks are
+    # handled by the fenced_code extension and won't reach here as bare text.
+    escaped = re.sub(r"^(#{1,6})(?=\S)", r"\\\1", desc, flags=re.MULTILINE)
     _md.reset()
-    return _md.convert(desc)
+    return _md.convert(escaped)
 
 
 def build_modal(a):
