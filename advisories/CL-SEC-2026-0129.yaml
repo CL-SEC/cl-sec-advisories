@@ -2,9 +2,9 @@ id: CL-SEC-2026-0129
 title: "Double-encoded entity reversal enables XSS via output corruption in cl-sanitize-html"
 reported: 2026-03-31
 published: 2026-03-31
-severity: high
-cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:H/A:N"
-cvss-score: 8.0
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N"
+cvss-score: 4.7
 cwe: CWE-79
 
 project:
@@ -36,6 +36,7 @@ audit:
   original-severity: critical
   notes: |
     Post-serialization regex rewriting was a real structural problem (now fixed), but advisory overreaches with broad critical XSS claim without showing a concrete exploit.
+    CVSS re-scored from 8.0 (HIGH) to 4.7 (MEDIUM): C:H/I:H overstated for a theoretical, high-complexity, user-interaction-dependent bypass with no demonstrated exploit.
 
 description: |
   The function decode-double-encoded-entities runs as a post-processing
