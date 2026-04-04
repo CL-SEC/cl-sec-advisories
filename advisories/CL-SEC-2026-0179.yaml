@@ -31,17 +31,17 @@ disclosure:
   maintainer-response: null
   disclosure-deadline: null
   cve-id: null
-  status: disputed
+  status: withdrawn
 
 audit:
-  verdict: disputed
+  verdict: withdrawn
   original-severity: high
   notes: |
-    Downgraded to informational. The `read` pattern is a compile-time macro that expands
-    into code the developer explicitly wrote. Using it on untrusted input is a developer
-    choice, not a hidden trap — equivalent to calling read-from-string directly. The
-    *read-eval* nil binding was merged upstream as good defense-in-depth hygiene (PR #154),
-    but the original behavior was working-as-designed, not a vulnerability in trivia itself.
+    Withdrawn. The `read` pattern is a compile-time macro that expands into code the
+    developer explicitly wrote. Using it on untrusted input is a developer choice, not
+    a hidden trap — equivalent to calling read-from-string directly. A PR (#154) proposing
+    a *read-eval* nil binding as defense-in-depth was submitted but closed without merging,
+    as the original behavior is working-as-designed, not a vulnerability in trivia itself.
 
 description: |
   The `read` pattern in trivia (level2/derived2.lisp, lines 32-44)
