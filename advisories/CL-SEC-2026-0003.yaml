@@ -57,9 +57,12 @@ description: |
   network intermediary) can present their own certificate and proxy
   all traffic in both directions.
 
-  The OpenAI, Anthropic, and most other gRPC client libraries in
-  other languages default to verifying server certificates when TLS
-  is enabled.
+  This default is unsafe on its own terms: enabling TLS while
+  disabling certificate verification defeats the authentication
+  property that users normally expect from a secure channel.  This
+  also diverges from the usual expectation for TLS client APIs,
+  which normally verify the peer certificate by default unless the
+  caller explicitly opts out.
 
 recommendation: |
   Change the default for tls-verify / verify to T when TLS is enabled:
