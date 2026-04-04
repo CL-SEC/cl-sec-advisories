@@ -2,9 +2,9 @@ id: CL-SEC-2026-0148
 title: "Untrusted search path via parent directory traversal for ocicl.csv"
 reported: 2026-03-31
 published: 2026-03-31
-severity: low
-cvss: "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:U/C:N/I:L/A:N"
-cvss-score: 2.2
+severity: informational
+cvss: null
+cvss-score: 0.0
 cwe: CWE-426
 
 project:
@@ -34,13 +34,14 @@ disclosure:
   maintainer-response: null
   disclosure-deadline: null
   cve-id: null
-  status: draft
+  status: withdrawn
 
 audit:
-  verdict: severity-adjusted
+  verdict: withdrawn
   original-severity: medium
   notes: |
-    Upward config discovery is intentional behavior. *local-only* exists to disable it. Search-path trust issue, not inherent hidden code-execution.
+    Upward config discovery is intentional behavior, not a vulnerability.
+    OCICL_LOCAL_ONLY exists to disable it when needed.
 
 description: |
   The find-workdir function in both src/ocicl.lisp (line 1603) and
