@@ -516,6 +516,10 @@ def build_html(advisories):
       if (modal) openModal(id);
     }}
   </script>
+  <script>
+    window.HAPPENING_SITE_ID='CTuYcrXl1uCI';
+  </script>
+  <script src="https://happening.labdroid.net/js/tracker.js" defer></script>
 </body>
 </html>"""
 
