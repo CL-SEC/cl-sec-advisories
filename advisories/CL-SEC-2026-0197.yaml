@@ -18,9 +18,9 @@ affected:
     commit: "f76354d"
     url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
   fixed-in:
-    commit: "8e65f35"
+    commit: "aa8cb9c"
     version: "1.4.0"
-    url: "https://github.com/atgreen/ag-gRPC/commit/8e65f35"
+    url: "https://github.com/atgreen/ag-gRPC/commit/aa8cb9c"
   affected-dists: []
     # ag-gRPC is not in Quicklisp or ocicl
 
