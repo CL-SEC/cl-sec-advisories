@@ -1,0 +1,83 @@
+id: CL-SEC-2026-0019
+title: "Session fixation via client-supplied session ID reuse"
+reported: 2026-03-31
+published: 2026-03-31
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
+cvss-score: 8.1
+cwe: CWE-384  # Session Fixation
+
+project:
+  name: lack
+  homepage: https://github.com/fukamachi/lack
+  affected-systems:
+    - lack
+    - lack/middleware/session
+
+affected:
+  introduced-in:  # present since session middleware was added
+    commit: "f3302ce"
+    url: "https://github.com/fukamachi/lack/commit/f3302ce"
+  fixed-in:
+    commit: "c5c1e94"
+    version: "0.3.0"
+    url: "https://github.com/fukamachi/lack/commit/c5c1e94"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20250804-f3302ce"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/fukamachi/lack/security/advisories"
+  disclosed-to-maintainer: "2026-04-04"
+  maintainer-response: "fixed"
+  disclosure-deadline: null
+  cve-id: "GHSA-mj27-4cqf-vf3r"
+  status: published
+
+description: |
+  The session middleware (src/middleware/session.lisp lines 26-32)
+  accepts client-supplied session IDs even when no corresponding
+  session exists in the store:
+
+      (let* ((sid (extract-sid state env))
+             (session (and sid (fetch-session store sid)))
+             (sid (or sid (generate-sid state env)))
+             ...)
+
+  When a client supplies a session ID via cookie but no session data
+  exists in the store for that ID (fetch-session returns nil), the
+  server still uses the client-supplied sid (line 29: the or form
+  returns sid because it is non-nil, so generate-sid is never called).
+  The session is then stored under this attacker-controlled ID.
+
+  An attacker can exploit this for session fixation:
+
+    1. Generate a valid-format session ID (40 hex chars, matching the
+       validator regex in state/cookie.lisp)
+    2. Inject it into a victim's browser via a subdomain cookie, XSS,
+       or link with cookie-setting redirect
+    3. Wait for the victim to authenticate
+    4. Use the known session ID to access the victim's authenticated
+       session
+
+recommendation: |
+  Always generate a new server-side session ID when no existing session
+  is found in the store, regardless of what the client supplied:
+
+      (let* ((sid (extract-sid state env))
+             (session (and sid (fetch-session store sid)))
+             (sid (if session sid (generate-sid state env)))
+             ...)
+
+  This ensures that client-supplied IDs are only honored when they
+  correspond to an existing server-side session.
+
+references:
+  - https://cwe.mitre.org/data/definitions/384.html
+  - https://owasp.org/www-community/attacks/Session_fixation

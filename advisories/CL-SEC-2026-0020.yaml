@@ -1,0 +1,88 @@
+id: CL-SEC-2026-0020
+title: "Unsafe deserialization in session stores escalates data injection to code execution"
+reported: 2026-03-31
+published: 2026-03-31
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+cvss-score: 8.1
+cwe: CWE-502  # Deserialization of Untrusted Data
+
+project:
+  name: lack
+  homepage: https://github.com/fukamachi/lack
+  affected-systems:
+    - lack
+    - lack/middleware/session
+
+affected:
+  introduced-in:  # present since DBI/Redis stores were added
+    commit: "f3302ce"
+    url: "https://github.com/fukamachi/lack/commit/f3302ce"
+  fixed-in:
+    commit: "df23ab1"
+    version: "0.3.0"
+    url: "https://github.com/fukamachi/lack/commit/df23ab1"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20250804-f3302ce"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/fukamachi/lack/security/advisories"
+  disclosed-to-maintainer: "2026-04-04"
+  maintainer-response: "fixed"
+  disclosure-deadline: null
+  cve-id: "GHSA-9rrq-wr26-x46h"
+  status: published
+
+description: |
+  Both the DBI and Redis session stores use read-from-string as part
+  of their default deserializer:
+
+  In src/middleware/session/store/redis.lisp line 40:
+
+      (deserializer (lambda (data)
+                      (unmarshal (read-from-string
+                                  (utf-8-bytes-to-string
+                                   (base64-string-to-usb8-array data))))))
+
+  In src/middleware/session/store/dbi.lisp line 38, the identical
+  pattern.
+
+  read-from-string is the full Common Lisp reader, which by default
+  processes reader macros including #. (read-time evaluation).  If
+  *read-eval* is not explicitly bound to nil before calling
+  read-from-string, an attacker who can write to the session store
+  (via SQL injection elsewhere, direct Redis access, a shared Redis
+  instance, or any other data injection vector) can inject a payload
+  such as:
+
+      #.(uiop:run-program "id" :output :string)
+
+  into the serialized session data, achieving arbitrary code execution
+  when the session is loaded on the next request.
+
+  The base64 encoding does not prevent exploitation -- the attacker
+  simply base64-encodes the malicious payload.
+
+recommendation: |
+  Bind *read-eval* to nil before calling read-from-string:
+
+      (deserializer (lambda (data)
+                      (let ((*read-eval* nil))
+                        (unmarshal (read-from-string
+                                    (utf-8-bytes-to-string
+                                     (base64-string-to-usb8-array data)))))))
+
+  Better yet, replace read-from-string with a safe deserialization
+  format (e.g., JSON or a purpose-built binary format) that does not
+  invoke the Lisp reader at all.
+
+references:
+  - https://cwe.mitre.org/data/definitions/502.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management_Testing/
