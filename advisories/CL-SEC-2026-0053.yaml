@@ -1,0 +1,81 @@
+id: CL-SEC-2026-0053
+title: "Transfer-Encoding obfuscation via trailing whitespace enables TE-TE request smuggling"
+reported: 2026-03-31
+published: 2026-03-31
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N"
+cvss-score: 5.9
+cwe: CWE-444  # HTTP Request/Response Smuggling
+
+project:
+  name: fast-http
+  homepage: https://github.com/fukamachi/fast-http
+  affected-systems:
+    - fast-http
+
+affected:
+  introduced-in:
+    commit: "2232fc9"
+    url: "https://github.com/fukamachi/fast-http/commit/2232fc9"
+  fixed-in:
+    version: "v0.3.0"
+    commit: "e86789a"
+    url: "https://github.com/fukamachi/fast-http/commit/e86789a6bebf7f2015eda8ee7146b21ed3fbf03c"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20240503-2232fc9"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2024-10-12"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/fukamachi/fast-http/security/advisories"
+  disclosed-to-maintainer: "2026-04-05"
+  maintainer-response: "2026-04-06"
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+audit:
+  verdict: reviewed
+  original-severity: high
+  notes: |
+    General parser-differential class is credible. Some specific obfuscation examples may depend on intermediary behavior not shown.
+
+description: |
+  The Transfer-Encoding parser uses match-i-case for case-insensitive
+  matching of "chunked" (src/parser.lisp lines 353-377).  If the
+  value does not exactly match after trimming leading whitespace,
+  chunkedp is set to nil.
+
+  Obfuscated variants that some proxies accept as chunked are treated
+  as non-chunked by fast-http:
+
+    - "chunked " (trailing space): fast-http sets chunkedp = nil
+    - "chunked\x00" (null byte): treated as not-chunked
+    - "chunked, identity": treated as not-chunked
+
+  The trailing-space case is particularly dangerous: fast-http sets
+  chunkedp = nil while a front-end proxy that trims whitespace
+  before comparison sees "chunked", creating a TE-TE desync.
+
+  Additionally, duplicate Transfer-Encoding headers are silently
+  accepted with the last value winning (line 324), enabling:
+
+      Transfer-Encoding: chunked
+      Transfer-Encoding: identity
+
+  The second header overrides chunkedp to nil.  A proxy using the
+  first value sees chunked; fast-http sees identity.
+
+recommendation: |
+  Trim whitespace from the Transfer-Encoding value before comparison.
+  Reject requests with multiple conflicting Transfer-Encoding headers.
+  Reject requests with unrecognized Transfer-Encoding values.
+
+references:
+  - https://cwe.mitre.org/data/definitions/444.html
+  - https://portswigger.net/research/http-desync-attacks

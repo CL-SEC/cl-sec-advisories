@@ -1,0 +1,72 @@
+id: CL-SEC-2026-0051
+title: "HTTP request smuggling via duplicate Content-Length headers (last wins)"
+reported: 2026-03-31
+published: 2026-03-31
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 7.4
+cwe: CWE-444  # HTTP Request/Response Smuggling
+
+project:
+  name: fast-http
+  homepage: https://github.com/fukamachi/fast-http
+  affected-systems:
+    - fast-http
+
+affected:
+  introduced-in:
+    commit: "2232fc9"
+    url: "https://github.com/fukamachi/fast-http/commit/2232fc9"
+  fixed-in:
+    version: "v0.3.0"
+    commit: "1eb08b3"
+    url: "https://github.com/fukamachi/fast-http/commit/1eb08b3191c4edfa867dd294f6f38dcd90b4f13f"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20240503-2232fc9"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2024-10-12"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/fukamachi/fast-http/security/advisories"
+  disclosed-to-maintainer: "2026-04-05"
+  maintainer-response: "2026-04-06"
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  When a second Content-Length header is encountered,
+  parse-header-field-and-value (src/parser.lisp line 314)
+  unconditionally overwrites the previously stored value:
+
+      (setf (http-content-length http) content-length)
+
+  There is no check for whether http-content-length has already been
+  set.  Per RFC 9112 Section 6.3, a message with multiple
+  Content-Length values that disagree MUST be rejected as invalid.
+
+  By silently accepting the last value, fast-http allows a front-end
+  proxy that uses the first Content-Length to disagree with fast-http
+  (which uses the last), enabling classic CL-CL request smuggling.
+
+  Additionally, the higher-level collect-prev-header-value function
+  (fast-http.lisp lines 129-135) concatenates duplicate header values
+  with ", " -- but this happens after the parser has already set
+  http-content-length to the second value.  The http struct uses the
+  last CL value while the headers hash table presents "100, 50" --
+  an inconsistency that further enables smuggling.
+
+recommendation: |
+  Reject requests with duplicate Content-Length headers that have
+  different values.  If values are identical, accept the single
+  value.  If values differ, return 400 Bad Request.
+
+references:
+  - https://cwe.mitre.org/data/definitions/444.html
+  - https://datatracker.ietf.org/doc/html/rfc9112#section-6.3
+  - https://portswigger.net/web-security/request-smuggling

@@ -1,0 +1,64 @@
+id: CL-SEC-2026-0054
+title: "Unbounded chunk size hex parsing enables memory and CPU exhaustion"
+reported: 2026-03-31
+published: 2026-03-31
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-400  # Uncontrolled Resource Consumption
+
+project:
+  name: fast-http
+  homepage: https://github.com/fukamachi/fast-http
+  affected-systems:
+    - fast-http
+
+affected:
+  introduced-in:
+    commit: "2232fc9"
+    url: "https://github.com/fukamachi/fast-http/commit/2232fc9"
+  fixed-in:
+    version: "v0.3.0"
+    commit: "025dad5"
+    url: "https://github.com/fukamachi/fast-http/commit/025dad5dc41bd58755fe3f3c05c73e04876341ac"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20240503-2232fc9"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2024-10-12"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/fukamachi/fast-http/security/advisories"
+  disclosed-to-maintainer: "2026-04-05"
+  maintainer-response: "2026-04-06"
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  The chunk size parser (src/parser.lisp lines 556-591) accumulates
+  hex digits into http-content-length without any upper bound check:
+
+      (setf (http-content-length http)
+            (+ (* 16 (http-content-length http)) unhex-val))
+
+  The type is arbitrary-precision integer (CL bignum).  A malicious
+  client can send a chunk size with thousands of hex digits
+  (e.g., FFFFFF...FFFFFF\r\n), causing:
+
+    1. Memory exhaustion via unbounded bignum allocation
+    2. CPU exhaustion via progressively slower bignum multiplication
+    3. Downstream logic errors when the astronomical content-length
+       is compared against fixnum values
+
+recommendation: |
+  Limit chunk size hex digits to a reasonable maximum (e.g., 16
+  digits for a 64-bit value).  Reject chunks with sizes that exceed
+  a configurable maximum (e.g., 1GB).
+
+references:
+  - https://cwe.mitre.org/data/definitions/190.html

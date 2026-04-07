@@ -1,0 +1,74 @@
+id: CL-SEC-2026-0045
+title: "No domain validation at cookie storage time enables cookie jar poisoning"
+reported: 2026-03-31
+published: 2026-03-31
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N"
+cvss-score: 6.5
+cwe: CWE-565  # Reliance on Cookies without Validation and Integrity Checking
+
+project:
+  name: cl-cookie
+  homepage: https://github.com/fukamachi/cl-cookie
+  affected-systems:
+    - cl-cookie
+
+affected:
+  introduced-in:
+    commit: "8a2fb71"
+    url: "https://github.com/fukamachi/cl-cookie/commit/8a2fb71"
+  fixed-in:
+    commit: "355f9c1"
+    version: "v0.2.0"
+    url: "https://github.com/fukamachi/cl-cookie/commit/355f9c1"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260321-8a2fb71"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2024-10-12"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/fukamachi/cl-cookie/security/advisories"
+  disclosed-to-maintainer: "2026-04-05"
+  maintainer-response: "2026-04-06"
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  When parse-set-cookie-header parses a Set-Cookie response, it
+  stores the domain attribute verbatim (src/cl-cookie.lisp line 392)
+  without checking whether the origin server is authorized to set
+  cookies for that domain.
+
+  Per RFC 6265 Section 5.3 step 5, a cookie's domain attribute MUST
+  be rejected if the origin host does not domain-match it.
+
+  Domain validation via cookie-domain-p only happens at cookie
+  retrieval time (match-cookie, line 194), not at storage time.
+  This means:
+
+    1. A malicious server at evil.com can set Domain=victim.com on
+       a cookie.
+    2. The cookie is accepted and stored in the cookie jar.
+    3. merge-cookies' delete-duplicates (line 248) can overwrite a
+       legitimate cookie for the same name/path/domain combination.
+
+  If a user visits evil.com before victim.com, evil.com can
+  overwrite the victim's session cookie in the jar.  When the user
+  visits victim.com, the legitimate cookie has been destroyed.
+  This enables session fixation and denial of service.
+
+recommendation: |
+  In parse-set-cookie-header, after parsing the domain attribute,
+  verify that origin-host domain-matches the cookie domain per
+  RFC 6265 Section 5.3 step 5.  Reject or ignore the domain
+  attribute if validation fails.
+
+references:
+  - https://cwe.mitre.org/data/definitions/565.html
+  - https://datatracker.ietf.org/doc/html/rfc6265#section-5.3
