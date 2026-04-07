@@ -1,0 +1,114 @@
+id: CL-SEC-2026-0004
+title: "Authentication credentials forwarded on cross-origin HTTP redirect"
+reported: 2026-03-31
+published: 2026-03-31
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:N"
+cvss-score: 7.4
+cwe: CWE-522  # Insufficiently Protected Credentials
+
+project:
+  name: dexador
+  homepage: https://github.com/fukamachi/dexador
+  affected-systems:
+    - dexador
+    - dexador-usocket
+
+affected:
+  introduced-in:  # 2015-03-22 — "Add basic authorization support"
+    commit: "f0e47ab"
+    url: "https://github.com/fukamachi/dexador/commit/f0e47ab"
+  fixed-in:
+    commit: "5820f60"
+    version: "0.9.16"
+    url: "https://github.com/fukamachi/dexador/commit/5820f60dc8a351bbc424b14da5e9bccd44b2933e"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260324-201677b"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/fukamachi/dexador/security/advisories"
+  disclosed-to-maintainer: "2026-04-05"
+  maintainer-response: "2026-04-06"
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+audit:
+  verdict: reviewed
+  original-severity: high
+  notes: |
+    Real bug, confirmed in both usocket and winhttp backends. Requires redirect following plus malicious origin or open redirect, keeping it from unconditional credential leak.
+
+description: |
+  When dexador follows a 301, 302, 303, 307, or 308 redirect to a
+  different host, it forwards the original request's authentication
+  credentials to the new target host.
+
+  In the usocket backend (src/backend/usocket.lisp), the cross-host
+  redirect path (line 743-759) passes the full &rest args plist to the
+  recursive request call.  Only :headers, :max-redirects, :method, and
+  :stream are modified; :basic-auth and :bearer-auth are carried through
+  unchanged.  The :headers list is also preserved via nconc, so any
+  explicit Authorization header supplied by the caller is forwarded as
+  well.
+
+  In the winhttp backend (src/backend/winhttp.lisp, line 224-228), the
+  entire args plist is passed unmodified to the recursive call, producing
+  the same behavior.
+
+  An attacker who controls the initial target (or who can inject a
+  redirect via an open-redirect vulnerability on a trusted host) can
+  redirect the request to a host they control and capture the victim's
+  credentials:
+
+      ;; User trusts example.com
+      (dex:get "https://example.com/api"
+               :bearer-auth "ghp_secret_token")
+
+      ;; example.com has an open redirect, or the attacker controls
+      ;; the initial host.  302 Location: https://evil.com/steal
+      ;; => dexador sends "Authorization: Bearer ghp_secret_token"
+      ;;    to evil.com
+
+  Cookie-jar cookies are NOT affected: build-cookie-headers is called
+  with the new URI on same-host redirects, and on cross-host redirects
+  the cookie-jar is re-evaluated per domain by the recursive request.
+
+  This is the same class of vulnerability as:
+    - Python requests: CVE-2023-32681, CVE-2018-18074
+    - Go net/http: (stripped by default since Go 1.0)
+    - curl: CVE-2018-1000007 (fixed in 7.58.0)
+    - ruby net/http: CVE-2024-25126
+
+recommendation: |
+  Before the recursive request call for cross-host redirects, strip
+  authentication credentials from the args plist:
+
+    (remf args :basic-auth)
+    (remf args :bearer-auth)
+
+  And remove any Authorization entry from the :headers alist:
+
+    (setf (getf args :headers)
+          (remove :authorization (getf args :headers)
+                  :key #'car :test #'string-equal))
+
+  Apply the same fix to both the usocket and winhttp backends.
+
+  Users who need to send credentials to the redirect target can use a
+  cookie-jar (which already respects domain scoping) or handle redirects
+  manually via :max-redirects 0.
+
+references:
+  - https://cwe.mitre.org/data/definitions/522.html
+  - https://nvd.nist.gov/vuln/detail/CVE-2023-32681
+  - https://nvd.nist.gov/vuln/detail/CVE-2018-18074
+  - https://nvd.nist.gov/vuln/detail/CVE-2018-1000007
+  - https://owasp.org/www-community/attacks/Credential_Stuffing
