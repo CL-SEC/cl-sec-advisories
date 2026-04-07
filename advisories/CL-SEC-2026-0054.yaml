@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0054
 title: "Unbounded chunk size hex parsing enables memory and CPU exhaustion"
 reported: 2026-03-31
-published: 2026-03-31
+published: 2026-04-07
 severity: high
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
 cvss-score: 7.5

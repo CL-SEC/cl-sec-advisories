@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0045
 title: "No domain validation at cookie storage time enables cookie jar poisoning"
 reported: 2026-03-31
-published: 2026-03-31
+published: 2026-04-07
 severity: medium
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N"
 cvss-score: 6.5

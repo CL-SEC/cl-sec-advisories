@@ -1,7 +1,7 @@
 id: CL-SEC-2026-0004
 title: "Authentication credentials forwarded on cross-origin HTTP redirect"
 reported: 2026-03-31
-published: 2026-03-31
+published: 2026-04-07
 severity: high
 cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:N"
 cvss-score: 7.4
