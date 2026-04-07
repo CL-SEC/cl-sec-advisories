@@ -307,8 +307,10 @@ def build_html(advisories):
     # Count statuses for stats
     status_counts = {"Fixed": 0, "Open": 0, "Withdrawn": 0, "Disputed": 0}
 
-    for a in sorted(advisories, key=lambda x: (severity_order(x.get("severity", "")),
-                                                 -(float(x.get("cvss-score") or 0)))):
+    for a in sorted(advisories, key=lambda x: (x.get("published", "0000-00-00"),
+                                                 -severity_order(x.get("severity", "")),
+                                                 float(x.get("cvss-score") or 0)),
+                    reverse=True):
         sev = a.get("severity", "")
         score = a.get("cvss-score", "")
         cwe = a.get("cwe", "")
