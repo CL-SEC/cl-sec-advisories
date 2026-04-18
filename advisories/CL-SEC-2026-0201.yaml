@@ -1,0 +1,57 @@
+id: CL-SEC-2026-0201
+title: "Certificate chain trust anchor verified by issuer name only, not signature, in pure-tls"
+reported: 2026-04-18
+published: 2026-04-18
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 7.4
+cwe: CWE-295  # Improper Certificate Validation
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-01-02
+    commit: "a3076f0"
+    url: "https://github.com/atgreen/pure-tls/commit/a3076f0"
+  fixed-in:
+    commit: "0fefa53"
+    version: "1.11.1"
+    url: "https://github.com/atgreen/pure-tls/commit/0fefa53"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260215-d78526b"
+      last-affected: "20260331-77bef3c"
+      fixed-in: "20260418-d83c3ad"
+
+description: |
+  The verify-certificate-chain function accepted a certificate chain as
+  trusted if any chain member's issuer distinguished name matched a
+  trusted root certificate, without verifying the cryptographic
+  signature against that root's public key.  The check used
+  certificate-issued-by-p (issuer name equality) as a sufficient
+  condition for trust anchoring.
+
+  An attacker could construct a certificate chain containing a forged
+  intermediate whose issuer DN matches a well-known root CA.  Since
+  the signature was never checked, this forged intermediate would pass
+  the trust anchor test, and any end-entity certificate chaining to it
+  would be accepted.  This enables man-in-the-middle interception
+  without requiring CA compromise — only knowledge of the target root
+  CA's distinguished name.
+
+  The fix requires that chain-to-anchor verification calls
+  verify-certificate-signature in addition to certificate-issued-by-p,
+  ensuring the chain is cryptographically bound to the trust anchor.
+
+recommendation: |
+  Update to pure-tls 1.11.1 or later.  If updating is not possible,
+  set the OCICL_TLS_DEBUG environment variable to monitor chain
+  verification failures.
+
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://datatracker.ietf.org/doc/html/rfc5280#section-6

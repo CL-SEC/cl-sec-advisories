@@ -1,0 +1,59 @@
+id: CL-SEC-2026-0202
+title: "Constant-time comparison returns equal for inputs differing by a multiple of 256 bytes in length"
+reported: 2026-04-18
+published: 2026-04-18
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 5.9
+cwe: CWE-697  # Incorrect Comparison
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-03-11
+    commit: "03e03cc"
+    url: "https://github.com/atgreen/pure-tls/commit/03e03cc"
+  fixed-in:
+    commit: "7c0a399"
+    version: "1.11.1"
+    url: "https://github.com/atgreen/pure-tls/commit/7c0a399"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260331-77bef3c"
+      last-affected: "20260331-77bef3c"
+      fixed-in: "20260418-d83c3ad"
+
+description: |
+  The ct-equal-mask function in src/utils.lisp masked the XOR of the
+  two input lengths with #xFF before accumulating into the diff
+  variable.  When two inputs differ in length by a multiple of 256,
+  the masked length XOR is zero, and if the first min(len-a, len-b)
+  bytes are identical, ct-equal-mask returns #xFF (equal).
+
+  This function is used in ML-KEM-768 decapsulation (src/crypto/ml-kem.lisp)
+  to compare the re-encrypted ciphertext against the received ciphertext
+  for implicit rejection (FIPS 203 Section 7.3).  A false "equal"
+  result causes decapsulation to return the real shared secret instead
+  of the rejection key, breaking IND-CCA2 security.
+
+  In practice, ML-KEM ciphertexts are fixed-length within a parameter
+  set, which limits immediate exploitability.  However, the function
+  is a general-purpose primitive and any future use with variable-length
+  inputs (MACs, hashes, authentication tokens) would be directly
+  exploitable as an authentication bypass.
+
+  The fix accumulates the full fixnum XOR of lengths and folds all
+  bytes together before the mask derivation, ensuring any non-zero
+  length difference produces a "not equal" result.
+
+recommendation: |
+  Update to pure-tls 1.11.1 or later.  Review any code that calls
+  ct-equal-mask with potentially variable-length inputs.
+
+references:
+  - https://cwe.mitre.org/data/definitions/697.html
+  - https://doi.org/10.6028/NIST.FIPS.203
