@@ -1,0 +1,71 @@
+id: CL-SEC-2026-0203
+title: "Unbounded recursion in protobuf nested message deserialization"
+reported: 2026-04-20
+published: 2026-04-20
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-674  # Uncontrolled Recursion
+
+project:
+  name: ag-proto
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-proto
+
+affected:
+  introduced-in:
+    commit: "f76354d"
+    url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
+  fixed-in:
+    commit: "d158251"
+    version: "1.5.0"
+    url: "https://github.com/atgreen/ag-gRPC/commit/d158251"
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  Generated deserialize-from-bytes methods for protobuf messages recurse
+  into nested message fields without any depth limit.  A malicious
+  protobuf payload containing deeply nested embedded messages (e.g.,
+  message A containing message A containing message A...) causes
+  unbounded stack recursion, crashing the process with a stack overflow.
+
+  The relevant code path in codegen.lisp generates:
+
+      (let ((data (read-length-delimited buffer)))
+        (deserialize-from-bytes 'NESTED-TYPE data))
+
+  Each nested message triggers another call to deserialize-from-bytes
+  with no depth tracking.  An attacker who can send arbitrary protobuf
+  messages to a gRPC server (or trick a client into deserializing a
+  crafted response) can cause denial of service.
+
+  This affects all generated message types that contain embedded message
+  fields, including recursive/self-referential message definitions.
+
+recommendation: |
+  Upgrade to ag-gRPC >= 1.5.0, which adds *max-recursion-depth*
+  (default 100, matching the protobuf spec recommendation).  The limit
+  is enforced before each recursive deserialize-from-bytes call.
+
+  To adjust the limit:
+
+      (setf ag-proto:*max-recursion-depth* 50)   ; stricter
+      (setf ag-proto:*max-recursion-depth* nil)   ; disable (not recommended)
+
+related:
+  - CL-SEC-2026-0197  # Unbounded memory allocation in same code path
+
+references:
+  - https://cwe.mitre.org/data/definitions/674.html
+  - https://protobuf.dev/programming-guides/encoding/
+  - https://protobuf.dev/reference/cpp/api-docs/google.protobuf.io.coded_stream/#CodedInputStream.SetRecursionLimit.details

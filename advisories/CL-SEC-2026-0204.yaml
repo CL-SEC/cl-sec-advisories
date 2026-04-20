@@ -1,0 +1,71 @@
+id: CL-SEC-2026-0204
+title: "No decompressed size limit in gRPC message decompression (gzip bomb)"
+reported: 2026-04-20
+published: 2026-04-20
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-409  # Improper Handling of Highly Compressed Data (Zip/Decompression Bomb)
+
+project:
+  name: ag-grpc
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-grpc
+
+affected:
+  introduced-in:
+    commit: "f76354d"
+    url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
+  fixed-in:
+    commit: "d158251"
+    version: "1.5.0"
+    url: "https://github.com/atgreen/ag-gRPC/commit/d158251"
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  The gRPC message decompression functions gzip-decompress and
+  decompress-grpc-message (framing.lisp) decompress the full payload
+  into memory without checking the resulting size.  A small compressed
+  gRPC message (e.g., a few kilobytes of gzip-compressed zeros) can
+  expand to gigabytes, exhausting available memory and crashing the
+  process.
+
+  The gzip decompression path was:
+
+      (chipz:decompress nil 'chipz:gzip simple-data)
+
+  The result is returned without any size validation.  The existing
+  *max-message-size* limit (CL-SEC-2026-0197) only checks the
+  compressed wire size, not the decompressed output.
+
+  This affects both server-side request decompression and client-side
+  response decompression when gzip or deflate encoding is negotiated
+  via the grpc-encoding header.
+
+recommendation: |
+  Upgrade to ag-grpc >= 1.5.0, which adds *max-decompressed-size*
+  (default 16 MiB).  The decompressed output size is checked before
+  the data is returned to the caller.
+
+  To adjust the limit:
+
+      (setf ag-grpc:*max-decompressed-size* (* 64 1024 1024))  ; 64 MiB
+      (setf ag-grpc:*max-decompressed-size* nil)                ; disable (not recommended)
+
+related:
+  - CL-SEC-2026-0197  # Unbounded allocation in length-delimited decoding
+
+references:
+  - https://cwe.mitre.org/data/definitions/409.html
+  - https://en.wikipedia.org/wiki/Zip_bomb
+  - https://www.bamsoftware.com/hacks/zipbomb/
