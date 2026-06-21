@@ -1,0 +1,77 @@
+id: CL-SEC-2026-0210
+title: "gRPC client crash on malformed percent-encoded grpc-message trailer"
+reported: 2026-06-21
+published: 2026-06-21
+severity: low
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+cvss-score: 3.7
+cwe: CWE-248  # Uncaught Exception
+
+project:
+  name: ag-gRPC
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-grpc
+  unaffected-systems:
+    - ag-http2
+    - ag-proto
+    - ag-proto-cli
+
+affected:
+  introduced-in:
+    commit: "f76354d"
+    url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
+  fixed-in:
+    commit: "13a0b93"
+    version: "1.5.6"
+    url: "https://github.com/atgreen/ag-gRPC/commit/13a0b93"
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  The gRPC client decodes the peer-supplied grpc-message trailer with
+  percent-decode (metadata.lisp), called from the response-handling paths
+  in call.lisp.  The decoder assumes a "%" is always followed by two hex
+  digits:
+
+      ((and (char= char #\%) (<= (+ i 2) len))
+       (vector-push-extend (parse-integer string :start (1+ i)
+                                                  :end (+ i 3) :radix 16)
+                           bytes)
+       (incf i 3))
+
+  A malicious or buggy server can send a grpc-message value with a
+  truncated escape (for example "...%2", one hex digit before end-of-
+  string) or a non-hex escape ("...%ZZ").  In the truncated case
+  parse-integer is called with :end past the end of the string, raising
+  SB-KERNEL:BOUNDING-INDICES-BAD-ERROR; in the non-hex case parse-integer
+  raises on the invalid digits.  Either uncaught error aborts processing
+  of that RPC's response.
+
+  Impact is limited: the attacker must be the server the client chose to
+  talk to (or be positioned to tamper with its trailers), and the effect
+  is confined to the availability of the client's own in-flight call, not
+  other calls or other clients -- hence the high attack complexity and low
+  severity.
+
+recommendation: |
+  Make percent-decode tolerant of malformed peer input.  The working-tree
+  fix only treats "%XX" as an escape when two hex digits actually follow
+  (using digit-char-p ... 16 and requiring (<= (+ i 3) len)); otherwise it
+  emits the "%" literally instead of calling parse-integer.  This never
+  signals on malformed input while preserving correct decoding of
+  well-formed "%XX" sequences.  Callers that parse server-supplied status
+  trailers (e.g. the grpc-status parse-integer in call.lisp) should
+  additionally be wrapped to default to INTERNAL on bad input.
+
+references:
+  - https://cwe.mitre.org/data/definitions/248.html
+  - https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md

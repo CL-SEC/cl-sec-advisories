@@ -1,0 +1,103 @@
+id: CL-SEC-2026-0208
+title: "Unbounded request buffering in HTTP/2 server (no max-receive-message-size)"
+reported: 2026-06-21
+published: 2026-06-21
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-770  # Allocation of Resources Without Limits or Throttling
+
+project:
+  name: ag-gRPC
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-http2
+    - ag-grpc
+  unaffected-systems:
+    - ag-proto
+    - ag-proto-cli
+
+affected:
+  introduced-in:
+    commit: "f76354d"
+    url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
+  fixed-in:
+    commit: "13a0b93"
+    version: "1.5.6"
+    url: "https://github.com/atgreen/ag-gRPC/commit/13a0b93"
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  The HTTP/2 receive path buffers inbound DATA frames per stream with no
+  upper bound, and the receiver's flow-control window provides no
+  backpressure, so a single unauthenticated peer can drive the server to
+  exhaust memory.
+
+  In connection.lisp, process-frame appends every DATA payload to the
+  stream's buffer:
+
+      (stream-append-data stream (frame-payload frame))
+
+  stream-append-data (streams.lisp) is an unbounded vector-push-extend
+  loop.  Immediately afterwards the handler decrements the local
+  flow-control window and then restores it while emitting a WINDOW_UPDATE
+  for the full payload:
+
+      (decf (window-size (connection-local-window conn)) data-length)
+      ... write WINDOW_UPDATE(0, data-length) / WINDOW_UPDATE(stream, data-length) ...
+      (incf (window-size (connection-local-window conn)) data-length)
+
+  The net window change is zero and the peer is always told it may send
+  more, so flow control never throttles a sender.  There is no
+  max-receive-message-size anywhere in ag-http2 or ag-grpc.
+
+  Exploit: after the HTTP/2 handshake, an unauthenticated peer opens a
+  stream and streams DATA frames without ever setting END_STREAM (or
+  declares a large gRPC length prefix and trickles the body).  Because the
+  bytes are buffered at the HTTP/2 layer before any handler/gRPC
+  dispatch, the per-stream buffer grows without limit until the process is
+  killed by the OOM killer, taking down the whole server for all clients.
+  The streaming-RPC message queue (stream-message-buffer in server.lisp)
+  has the same unbounded shape when the application handler is slower than
+  the sender.
+
+  This is the same class of remote, unauthenticated memory-exhaustion DoS
+  as CL-SEC-2026-0204 (decompression bomb) and CL-SEC-2026-0197
+  (length-delimited allocation), and is made cheaper by CL-SEC-2026-0209
+  (no SETTINGS_MAX_FRAME_SIZE enforcement, allowing 16 MB DATA frames).
+
+recommendation: |
+  Bound the buffered-but-unconsumed request data per stream and fail the
+  connection once the bound is exceeded.  The working-tree fix adds:
+
+      ag-http2:*max-receive-buffer-size*  ; default 4 MiB (gRPC default
+                                          ; max receive message size); NIL disables
+
+  and, in the DATA-frame handler, rejects a stream whose buffered data
+  exceeds the cap with an ENHANCE_YOUR_CALM connection error before doing
+  further work.  This bounds memory while preserving throughput for
+  legitimate transfers (the window is still replenished within the cap).
+
+  Operators can tune the limit:
+
+      (setf ag-http2:*max-receive-buffer-size* (* 16 1024 1024))  ; 16 MiB
+      (setf ag-http2:*max-receive-buffer-size* nil)               ; disable (not recommended)
+
+related:
+  - CL-SEC-2026-0204  # gzip bomb (same DoS class)
+  - CL-SEC-2026-0197  # unbounded length-delimited allocation
+  - CL-SEC-2026-0209  # no MAX_FRAME_SIZE enforcement (amplifies this)
+
+references:
+  - https://cwe.mitre.org/data/definitions/770.html
+  - https://datatracker.ietf.org/doc/html/rfc7540#section-5.2
+  - https://datatracker.ietf.org/doc/html/rfc7540#section-10.5

@@ -1,0 +1,85 @@
+id: CL-SEC-2026-0209
+title: "HTTP/2 SETTINGS_MAX_FRAME_SIZE not enforced on inbound frames"
+reported: 2026-06-21
+published: 2026-06-21
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-770  # Allocation of Resources Without Limits or Throttling
+                # (see also CWE-130: Improper Handling of Length Parameter Inconsistency)
+
+project:
+  name: ag-gRPC
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-http2
+    - ag-grpc
+  unaffected-systems:
+    - ag-proto
+    - ag-proto-cli
+
+affected:
+  introduced-in:
+    commit: "f76354d"
+    url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
+  fixed-in:
+    commit: "13a0b93"
+    version: "1.5.6"
+    url: "https://github.com/atgreen/ag-gRPC/commit/13a0b93"
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  read-frame (frames.lisp) parses the 24-bit frame length from the wire
+  and unconditionally allocates a payload buffer of that size before
+  reading the body:
+
+      (length (logior (ash (aref header 0) 16)
+                      (ash (aref header 1) 8)
+                      (aref header 2)))
+      ...
+      (payload (make-array length :element-type '(unsigned-byte 8)))
+
+  The declared length may be up to 2^24-1 (16 MiB).  RFC 7540 section 4.2
+  requires that a frame exceeding the receiver's advertised
+  SETTINGS_MAX_FRAME_SIZE (default and minimum 16384) be treated as a
+  connection error of type FRAME_SIZE_ERROR.  The server advertises
+  max-frame-size 16384 in its SETTINGS but never checks inbound frames
+  against it.
+
+  Exploit: an unauthenticated peer sends a 9-byte frame header declaring a
+  length of up to 16 MiB and then stalls.  read-frame allocates the full
+  buffer and blocks in read-full-sequence waiting for bytes that never
+  arrive.  With the default max-connections of 128, roughly 2 GiB of
+  server memory can be pinned with only a few bytes of traffic per
+  connection (a ~1.8-million-to-one amplification from the 9-byte header).
+  Because the bound is per frame, repeated oversize frames also feed the
+  unbounded buffering issue described in CL-SEC-2026-0208.
+
+recommendation: |
+  Reject frames larger than the advertised SETTINGS_MAX_FRAME_SIZE before
+  allocating the payload.  The working-tree fix:
+
+    * adds the constant ag-http2::+default-max-frame-size+ (16384);
+    * gives read-frame an optional max-frame-size argument and signals
+      http2-frame-error with error-code FRAME_SIZE_ERROR when
+      (> length max-frame-size), before make-array; and
+    * has connection-read-frame pass the connection's locally-advertised
+      SETTINGS_MAX_FRAME_SIZE.
+
+related:
+  - CL-SEC-2026-0208  # unbounded request buffering (amplified by this)
+  - CL-SEC-2026-0197  # unbounded length-delimited allocation
+
+references:
+  - https://cwe.mitre.org/data/definitions/770.html
+  - https://cwe.mitre.org/data/definitions/130.html
+  - https://datatracker.ietf.org/doc/html/rfc7540#section-4.2
