@@ -1,0 +1,82 @@
+id: CL-SEC-2026-0206
+title: "Out-of-bounds read parsing attacker-supplied ECHConfig causes uncaught error (remote DoS) in pure-tls"
+reported: 2026-06-21
+published: 2026-06-21
+severity: low
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+cvss-score: 5.3
+cwe: CWE-125  # Out-of-bounds Read
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-01-12
+    commit: "c29b714"
+    url: "https://github.com/atgreen/pure-tls/commit/c29b714"
+  fixed-in:
+    commit: "9f9f974"
+    version: "1.11.2"
+    url: "https://github.com/atgreen/pure-tls/commit/9f9f974"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260112-3b35adb"
+      last-affected: "20260418-27c89f1"
+      fixed-in: "20260621-117b1ea"
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    CVSS base vector computes to 5.3 (medium), but real-world impact is
+    limited to a single client-to-malicious-server connection: the
+    handshake aborts with an uncaught Lisp condition, with no effect on
+    other connections, no memory disclosure (SBCL bounds-checks AREF/SUBSEQ
+    and raises a condition rather than reading wild memory), and no data or
+    integrity impact. Adjusted to low. The primary attack surface is a
+    pure-tls *client* processing a hostile server's EncryptedExtensions; the
+    server-side ClientHello ECH path uses the bounds-checked tls-buffer
+    readers and is not affected.
+
+description: |
+  The Encrypted Client Hello (ECH) configuration parser in
+  src/handshake/ech.lisp reads attacker-controlled 16-bit and 8-bit
+  length fields (public_key, cipher_suites, public_name, extensions) and
+  slices the input with raw AREF/SUBSEQ *before* performing its only
+  bounds check (the `(<= pos end)` test at the end of
+  parse-ech-config-contents).  An oversized length field therefore makes
+  SUBSEQ raise SB-KERNEL:BOUNDING-INDICES-BAD-ERROR — an ordinary CL
+  error that is NOT a subtype of pure-tls:tls-error.
+
+  A pure-tls client reaches this path when it parses the ECH extension in
+  an EncryptedExtensions message (parse-ech-extension dispatches to
+  parse-ech-config-list for the :encrypted-extensions context).  This
+  happens during normal message parsing even if the client never offered
+  ECH.  The handshake error handlers only catch tls-* conditions, so the
+  raw bounds error propagates uncaught and terminates the handshake (and,
+  depending on how the caller drives the connection, the worker thread).
+
+  Proof of concept (an 11-byte ECHConfigList whose declared public_key
+  length is 0xFFFF):
+
+      00 09 fe 0d 00 05 00 00 20 ff ff
+
+  parse-ech-config-list accepts the outer length, parse-ech-config reads
+  version 0xfe0d and contents length 5, and parse-ech-config-contents
+  then evaluates (subseq data 11 65546) over an 11-byte buffer, raising
+  "The bounding indices 11 and 65546 are bad for a sequence of length 11."
+
+recommendation: |
+  Update to pure-tls 1.11.2 or later.  The fix parses ECHConfig
+  structures through the bounds-checked tls-buffer readers
+  (buffer-read-octet / buffer-read-uint16 / buffer-read-vector8 /
+  buffer-read-vector16), which validate every length against the
+  remaining buffer and signal a graceful tls-decode-error instead of a
+  raw Lisp condition.
+
+references:
+  - https://cwe.mitre.org/data/definitions/125.html
+  - https://datatracker.ietf.org/doc/html/rfc9460

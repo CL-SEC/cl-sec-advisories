@@ -1,0 +1,84 @@
+id: CL-SEC-2026-0207
+title: "ExtendedKeyUsage not enforced during certificate chain verification in pure-tls"
+reported: 2026-06-21
+published: 2026-06-21
+severity: low
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N"
+cvss-score: 4.2
+cwe: CWE-295  # Improper Certificate Validation
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-01-04
+    commit: "dfd866b"
+    url: "https://github.com/atgreen/pure-tls/commit/dfd866b"
+  fixed-in:
+    commit: "9f9f974"
+    version: "1.11.2"
+    url: "https://github.com/atgreen/pure-tls/commit/9f9f974"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260110-232c887"
+      last-affected: "20260418-27c89f1"
+      fixed-in: "20260621-117b1ea"
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    EKU non-enforcement is primarily a defense-in-depth / RFC 5280 +
+    CA/Browser Forum compliance gap.  Direct impersonation requires the
+    attacker to already possess a validly-chained certificate that differs
+    from a usable one only by its ExtendedKeyUsage — most realistically an
+    EKU-technically-constrained subordinate CA in the trust path, or a
+    certificate mis-issued for the wrong purpose.  Because that precondition
+    must already hold, the practical severity is low even though the
+    consequence in that scenario (acceptance of a certificate for an
+    unintended purpose, enabling MITM) is serious.
+
+description: |
+  The pure-Lisp certificate chain verifier (verify-certificate-chain in
+  src/x509/verify.lisp) validated dates, issuer names, BasicConstraints
+  cA, keyCertSign, path-length, and signatures, but never inspected the
+  ExtendedKeyUsage (EKU) extension.  EKU was even listed among the
+  "known" critical extensions (src/x509/certificate.lisp), so a leaf
+  carrying a *critical* EKU that omits id-kp-serverAuth was accepted
+  silently as a TLS server certificate; symmetrically, a client
+  certificate need not carry id-kp-clientAuth.
+
+  Concretely, a leaf with EKU = clientAuth only (no serverAuth) is
+  accepted when validating a server's chain:
+
+      (verify-certificate-chain (list clientauth-only-leaf) (list root))
+      => T          ; should be rejected for TLS server authentication
+
+  The risk is that EKU is a relied-upon technical constraint: PKIs
+  delegate subordinate CAs that are constrained (by EKU and/or
+  nameConstraints) so that they cannot mint certificates usable for TLS
+  server authentication.  By ignoring EKU, pure-tls removes that
+  containment, so a certificate (or sub-CA) constrained away from
+  serverAuth could nonetheless be used to authenticate a TLS server,
+  enabling man-in-the-middle interception.
+
+  Note: this is the surviving half of an earlier internal finding whose
+  nameConstraints component proved to be a false positive — pure-tls
+  fails *closed* on a critical nameConstraints extension because the
+  nameConstraints OID (2.5.29.30) is not recognized, so such certificates
+  are rejected at parse time.
+
+recommendation: |
+  Update to pure-tls 1.11.2 or later.  The fix adds a `purpose` parameter
+  to verify-certificate-chain (the TLS client path requests :server-auth,
+  the server path requests :client-auth) and rejects a leaf whose EKU
+  extension is present but contains neither the requested purpose nor
+  anyExtendedKeyUsage.  Per RFC 5280, a certificate with no EKU extension
+  is treated as unrestricted and continues to be accepted.
+
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12
