@@ -23,7 +23,7 @@ affected:
     url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
   fixed-in:
     commit: "13a0b93"
-    version: "1.5.6"
+    version: "1.5.7"
     url: "https://github.com/atgreen/ag-gRPC/commit/13a0b93"
   affected-dists: []
     # ag-gRPC is not in Quicklisp or ocicl
