@@ -6,6 +6,8 @@ Generates:
   _site/advisories.json  - Machine-readable advisory data
   _site/advisories.tar.gz - Tarball for cl-sec-audit
   _site/version.json     - Metadata
+  _site/osv/<id>.json    - One OSV record per advisory (osv.dev schema)
+  _site/osv/all.json     - All OSV records as a single array
 """
 
 import html as html_module
@@ -103,6 +105,8 @@ def parse_advisory_full(path):
                 adv["homepage"] = yval(val)
             elif key == "status":
                 adv["status"] = yval(val)
+            elif key == "cve-id":
+                adv["cve-id"] = yval(val)
             elif key == "verdict":
                 adv["audit-verdict"] = yval(val)
             elif key == "description" and val == "|":
@@ -486,6 +490,7 @@ def build_html(advisories):
       <a href="https://github.com/CL-SEC/cl-sec-advisories">GitHub</a> &middot;
       <a href="advisories.tar.gz">Download database</a> &middot;
       <a href="advisories.json">JSON API</a> &middot;
+      <a href="osv/all.json">OSV</a> &middot;
       Generated {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}
     </p>
   </div>
@@ -530,6 +535,109 @@ def build_html(advisories):
 </html>"""
 
 
+OSV_SCHEMA_VERSION = "1.6.0"
+
+
+def _rfc3339(date_str):
+    """Convert a YYYY-MM-DD advisory date to an RFC3339 UTC timestamp."""
+    if not date_str:
+        return None
+    try:
+        d = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return d.replace(tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def build_osv(a):
+    """Convert a parsed CL-SEC advisory to an OSV record (osv.dev schema).
+
+    Common Lisp has no registered OSV ecosystem, so affected packages are
+    expressed as GIT commit ranges keyed off the project repository rather
+    than ecosystem/package version ranges.  Anything OSV has no native home
+    for (project name, CWE, severity label, status, affected systems, fixed
+    version) is preserved under `database_specific`.
+    """
+    osv = {
+        "schema_version": OSV_SCHEMA_VERSION,
+        "id": a.get("id"),
+    }
+
+    # Derive `modified` from the advisory's own dates rather than wall-clock
+    # time so repeated builds produce stable output (no spurious churn).
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    osv["modified"] = _rfc3339(a.get("published") or a.get("reported")) or now
+    pub = _rfc3339(a.get("published"))
+    if pub:
+        osv["published"] = pub
+
+    cve = a.get("cve-id")
+    if cve:
+        osv["aliases"] = [cve]
+
+    if a.get("title"):
+        osv["summary"] = a["title"]
+
+    details = a.get("description", "") or ""
+    if a.get("recommendation"):
+        details = (details + "\n\n## Recommendation\n\n" + a["recommendation"]).strip()
+    if details:
+        osv["details"] = details
+
+    if a.get("cvss"):
+        osv["severity"] = [{"type": "CVSS_V3", "score": a["cvss"]}]
+
+    # Affected: a GIT range over the project repo (no OSV ecosystem for CL).
+    # OSV requires the first event in a GIT range to be `introduced`; "0"
+    # means "from the first commit" when the introducing commit is unknown.
+    repo = a.get("homepage")
+    introduced = a.get("introduced-commit")
+    fixed = a.get("fixed-commit")
+    affected_entry = {}
+    if repo and (introduced or fixed):
+        events = [{"introduced": introduced or "0"}]
+        if fixed:
+            events.append({"fixed": fixed})
+        affected_entry["ranges"] = [{
+            "type": "GIT",
+            "repo": repo,
+            "events": events,
+        }]
+
+    ds = {}
+    if a.get("project-name"):
+        ds["project"] = a["project-name"]
+    if a.get("severity"):
+        ds["severity"] = a["severity"]
+    if a.get("cwe"):
+        ds["cwe_ids"] = [a["cwe"].split()[0]]
+    if a.get("status"):
+        ds["status"] = a["status"]
+    if a.get("affected-systems"):
+        ds["affected_systems"] = a["affected-systems"]
+    if a.get("unaffected-systems"):
+        ds["unaffected_systems"] = a["unaffected-systems"]
+    if a.get("fixed-version"):
+        ds["fixed_version"] = a["fixed-version"]
+    if ds:
+        affected_entry["database_specific"] = ds
+
+    if affected_entry:
+        osv["affected"] = [affected_entry]
+
+    refs = []
+    if repo:
+        refs.append({"type": "PACKAGE", "url": repo})
+    if a.get("introduced-url"):
+        refs.append({"type": "GIT", "url": a["introduced-url"]})
+    if a.get("fixed-url"):
+        refs.append({"type": "FIX", "url": a["fixed-url"]})
+    if refs:
+        osv["references"] = refs
+
+    return osv
+
+
 def main():
     SITE_DIR.mkdir(exist_ok=True)
 
@@ -547,6 +655,16 @@ def main():
 
     (SITE_DIR / "advisories.json").write_text(json.dumps(advisories, indent=2))
     print("Built advisories.json")
+
+    osv_dir = SITE_DIR / "osv"
+    osv_dir.mkdir(exist_ok=True)
+    osv_all = []
+    for a in advisories:
+        rec = build_osv(a)
+        osv_all.append(rec)
+        (osv_dir / f"{a['id']}.json").write_text(json.dumps(rec, indent=2))
+    (osv_dir / "all.json").write_text(json.dumps(osv_all, indent=2))
+    print(f"Built {len(osv_all)} OSV records in osv/")
 
     subprocess.run(["tar", "czf", str(SITE_DIR / "advisories.tar.gz"),
                     "-C", "advisories", "."], check=True)
