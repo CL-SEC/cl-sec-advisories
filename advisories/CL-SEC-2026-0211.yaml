@@ -1,0 +1,94 @@
+id: CL-SEC-2026-0211
+title: "Backslash protocol-relative URL bypass in cl-sanitize-html allows resource loading from arbitrary domains"
+reported: 2026-06-22         # date the advisory was drafted
+published: 2026-06-22       # date of public disclosure
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:N/A:N"
+cvss-score: 4.1
+cwe: CWE-20  # Improper Input Validation (see also CWE-601 Open Redirect)
+
+project:
+  name: cl-sanitize-html
+  homepage: https://github.com/atgreen/cl-sanitize-html
+  affected-systems:
+    - sanitize-html
+
+affected:
+  introduced-in:  # 2025-11-02 -- present since the original protocol check
+    commit: "a93616f"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/a93616f"
+  fixed-in:
+    commit: "6427288"
+    version: "1.0.1"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/6427288"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20251102-f5366ec"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/atgreen/cl-sanitize-html"
+  disclosed-to-maintainer: 2026-06-22
+  maintainer-response: 2026-06-22
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  This is an incomplete-fix follow-on to CL-SEC-2026-0132.
+
+  The protocol-allowed-p function (src/policies.lisp) permits relative
+  URLs by accepting any value whose first character is "/", and -- after
+  the CL-SEC-2026-0132 fix (commit 10cc58c, v1.0.0) -- rejecting
+  protocol-relative URLs that begin with "//". However, that fix only
+  special-cases the forward slash:
+
+      (and (> (length url-lower) 0)
+           (char= (char url-lower 0) #\/)
+           (or (<= (length url-lower) 1)
+               (char/= (char url-lower 1) #\/)))
+
+  Per the WHATWG URL Standard, a backslash is treated as equivalent to a
+  forward slash in the authority position of special-scheme (http/https)
+  URLs. Browsers therefore resolve "/\evil.com/x", "\/evil.com", and
+  "\\evil.com" as the network-path (protocol-relative) reference
+  "//evil.com/x" -> "https://evil.com/x". Because the sanitizer only
+  rejects a literal "//", the value "/\evil.com/..." passes the relative-
+  URL allowance (second character is "\", not "/") and is preserved on
+  href, src, cite, poster, background, and srcset attributes. The
+  attacker-controlled domain is then loaded by the victim's browser.
+
+  As with CL-SEC-2026-0132, this enables tracking pixels and IP/data
+  exfiltration via auto-loaded <img src> (no user interaction required),
+  and open-redirect / phishing via <a href> on click. The bypass affects
+  the default policy; no special configuration is needed. The entity-
+  encoded form (e.g. "/&#92;evil.com") is normalized to the same payload
+  and is likewise affected.
+
+  Confirmed against the built library (SBCL 2.6.5, plump 20260218):
+
+      (protocol-allowed-p *default-policy* "//evil.com/x")  => NIL  ; 0132
+      (protocol-allowed-p *default-policy* "/\\evil.com/x")  => T    ; bypass
+
+      (sanitize-html "<img src='/\\evil.com/track.gif'>")
+        => "<img src=\"/\\evil.com/track.gif\">"
+
+recommendation: |
+  Treat the backslash as equivalent to the forward slash before the
+  relative-URL check. Reject a URL whenever its first two characters are
+  each a path separator in the set { "/", "\" } -- i.e. //, /\, \/, and
+  \\ are all protocol-relative -- or normalize all backslashes to forward
+  slashes prior to validation. A relative URL is safe only when it starts
+  with a single separator that is not immediately followed by another
+  separator.
+
+references:
+  - https://cwe.mitre.org/data/definitions/20.html
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://url.spec.whatwg.org/#url-parsing
+  - https://github.com/CL-SEC/cl-sec-advisories/blob/main/advisories/CL-SEC-2026-0132.yaml
