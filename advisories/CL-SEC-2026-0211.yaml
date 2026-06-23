@@ -79,16 +79,17 @@ description: |
         => "<img src=\"/\\evil.com/track.gif\">"
 
 recommendation: |
-  Treat the backslash as equivalent to the forward slash before the
-  relative-URL check. Reject a URL whenever its first two characters are
-  each a path separator in the set { "/", "\" } -- i.e. //, /\, \/, and
-  \\ are all protocol-relative -- or normalize all backslashes to forward
-  slashes prior to validation. A relative URL is safe only when it starts
-  with a single separator that is not immediately followed by another
-  separator.
+  Update to cl-sanitize-html 1.0.1 or later. The fix treats the backslash
+  as equivalent to the forward slash before the relative-URL check: a URL
+  is rejected whenever its first two characters are each a path separator
+  in the set { "/", "\" } -- i.e. //, /\, \/, and \\ are all protocol-
+  relative -- so a relative URL is accepted only when it starts with a
+  single separator that is not immediately followed by another separator.
 
 references:
   - https://cwe.mitre.org/data/definitions/20.html
   - https://cwe.mitre.org/data/definitions/601.html
   - https://url.spec.whatwg.org/#url-parsing
+  - https://github.com/atgreen/cl-sanitize-html/releases/tag/v1.0.1
+  - https://github.com/atgreen/cl-sanitize-html/blob/v1.0.1/docs/release-notes/RELEASE-NOTES-1.0.1.md
   - https://github.com/CL-SEC/cl-sec-advisories/blob/main/advisories/CL-SEC-2026-0132.yaml
