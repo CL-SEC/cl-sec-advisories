@@ -36,7 +36,7 @@ disclosure:
   maintainer-response: null
   disclosure-deadline: null
   cve-id: null
-  status: draft
+  status: fixed
 
 description: |
   ag-http2/hpack.lisp DYNAMIC-TABLE-ADD evicts entries until a new header fits
@@ -75,7 +75,7 @@ description: |
 
 recommendation: |
   Follow RFC 7541 4.4: when the entry is larger than the current maximum table
-  size, empty the table and add nothing.  The working-tree fix special-cases
+  size, empty the table and add nothing.  The fix special-cases
   that branch and guards the eviction loop so DYNAMIC-TABLE-EVICT is never
   called on an empty table:
 

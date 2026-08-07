@@ -25,10 +25,9 @@ affected:
     version: "1.5.0"
     url: "https://github.com/atgreen/ag-gRPC/commit/d158251"
   fixed-in:
-    # Fix applied in the working tree (bounded-inflate); pending commit + release.
-    commit: null
-    version: null
-    url: null
+    commit: "bee1f0f"
+    version: "1.5.8"
+    url: "https://github.com/atgreen/ag-gRPC/commit/bee1f0f"
   affected-dists: []
     # ag-gRPC is not in Quicklisp or ocicl
 
@@ -38,7 +37,7 @@ disclosure:
   maintainer-response: null
   disclosure-deadline: null
   cve-id: null
-  status: draft
+  status: fixed
 
 description: |
   CL-SEC-2026-0204 added *max-decompressed-size* (default 16 MiB) to defend
@@ -78,7 +77,7 @@ recommendation: |
   Enforce the limit DURING decompression, so no more than the cap is ever
   allocated, rather than inflating fully and checking afterwards.
 
-  The working-tree fix adds bounded-inflate (ag-grpc/framing.lisp), which drives
+  The fix adds bounded-inflate (ag-grpc/framing.lisp), which drives
   chipz incrementally into a fixed (1+ *max-decompressed-size*)-byte output
   buffer using the state-based API:
 
