@@ -25,7 +25,7 @@ affected:
     - dist: ocicl
       first-affected: "20251102-a93616f"   # vulnerable since the first commit
       last-affected: "20260707-71fb57d"    # latest snapshot predating the v1.0.2 fix
-      fixed-in: null   # pending ocicl ingestion of v1.0.2 (commit f2dfb68)
+      fixed-in: "20260807-f2dfb68"
     - dist: quicklisp
       first-affected: "2026-01-01"
       last-affected: null
