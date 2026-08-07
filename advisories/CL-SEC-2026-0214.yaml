@@ -1,0 +1,107 @@
+id: CL-SEC-2026-0214
+title: "Preserved HTML comments can break out and inject markup in cl-sanitize-html (stored XSS)"
+reported: 2026-08-07         # date the advisory was drafted
+published: 2026-08-07       # date of public disclosure
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N"
+cvss-score: 4.7
+cwe: CWE-79  # Cross-site Scripting (see also CWE-116 Improper Encoding of Output)
+
+project:
+  name: cl-sanitize-html
+  homepage: https://github.com/atgreen/cl-sanitize-html
+  affected-systems:
+    - sanitize-html
+
+affected:
+  introduced-in:  # 2025-11-02 -- comment handling present since the original implementation
+    commit: "a93616f"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/a93616f"
+  fixed-in:
+    commit: "1c4cdcd"
+    version: "1.0.2"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/1c4cdcd"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20251102-f5366ec"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/atgreen/cl-sanitize-html"
+  disclosed-to-maintainer: 2026-08-07
+  maintainer-response: 2026-08-07
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  cl-sanitize-html sanitizes by parsing untrusted HTML with Plump,
+  mutating the DOM, and re-serializing.  For text nodes and attribute
+  values this is safe because Plump's serializer entity-encodes "<", ">",
+  '"', and "&".  Comment nodes are the exception: their text is emitted
+  verbatim, and the sanitizer does not neutralize it.
+
+  When a policy is configured with :remove-comments nil (a supported,
+  exported option -- the three built-in policies remove comments), the
+  comment sanitize-node method (src/sanitizer.lisp) preserves the comment
+  as-is.  Two Plump behaviours then combine into a comment-breakout XSS:
+
+    1. Plump's comment tokenizer ends a comment only at "-->", but the
+       HTML standard (and every browser) also ends a comment at "--!>"
+       and via the abrupt-close forms "<!-->" / "<!--->".  Plump stores
+       such a sequence as ordinary comment *content*.
+    2. Plump decodes entities in comment text at parse time and emits the
+       result raw at serialize time, so an entity-encoded terminator such
+       as "&#45;&#45;!>" (== "--!>") or "&#45;&#45;&#62;" (== "-->") is
+       decoded into an active terminator before output.
+
+  A preserved comment therefore round-trips into output that a browser
+  re-parses as: comment-end + live markup.
+
+  Confirmed against the built library (SBCL 2.6.6, plump 20260218), with a
+  policy where :remove-comments is nil:
+
+      (sanitize "<!-- --!><img src=x onerror=alert(1)> -->" policy)
+        => "<!-- --!><img src=x onerror=alert(1)> -->"   ; unchanged
+
+  A browser closes the comment at "--!>" and executes the <img> onerror
+  handler.  The entity-encoded variants ("&#45;&#45;!>", "&#45;&#45;&#62;")
+  reach the same sink because Plump decodes them first.  Parsing the
+  vulnerable output with a spec-compliant engine (html5lib) confirms the
+  <img>/<svg>/<script> escape the comment and become live nodes.
+
+  Under the default, strict, and email policies the same input yields "",
+  as comments are removed; only the non-default :remove-comments nil
+  configuration is affected.
+
+  The proximate cause is a Plump parse/serialize round-trip that is not
+  browser-faithful for comments.  The fix places responsibility in the
+  sanitizer -- the component that makes the security guarantee -- rather
+  than depending on the general-purpose parser's fidelity.
+
+recommendation: |
+  Update to cl-sanitize-html 1.0.2 or later (the fix landed on main via
+  PR #4, commit 1c4cdcd).  The fix neutralizes
+  preserved comment text before serialization, operating on Plump's
+  already-decoded text so entity-encoded terminators are covered: it
+  collapses runs of hyphens so "--" -- and therefore "-->", "--!>", and
+  "<!--" -- cannot appear, and pads a leading ">"/"-" or a trailing "-" so
+  the abrupt-close ("<!-->", "<!--->") and closing-delimiter merge cases
+  cannot form.
+
+  As an interim measure, callers can leave comment removal at its default
+  (:remove-comments t), which strips comments entirely and is unaffected.
+
+references:
+  - https://cwe.mitre.org/data/definitions/79.html
+  - https://cwe.mitre.org/data/definitions/116.html
+  - https://html.spec.whatwg.org/multipage/parsing.html#comment-end-bang-state
+  - https://github.com/atgreen/cl-sanitize-html/pull/4
+  - https://github.com/atgreen/cl-sanitize-html/commit/1c4cdcd
+  - https://github.com/atgreen/cl-sanitize-html/releases/tag/v1.0.2
+  - https://github.com/atgreen/cl-sanitize-html/blob/v1.0.2/docs/release-notes/RELEASE-NOTES-1.0.2.md

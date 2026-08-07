@@ -1,0 +1,91 @@
+id: CL-SEC-2026-0215
+title: "Deeply nested input escapes the fail-safe handler in cl-sanitize-html, causing denial of service"
+reported: 2026-08-07         # date the advisory was drafted
+published: 2026-08-07       # date of public disclosure
+severity: medium
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+cvss-score: 5.3
+cwe: CWE-674  # Uncontrolled Recursion (see also CWE-400 Uncontrolled Resource Consumption)
+
+project:
+  name: cl-sanitize-html
+  homepage: https://github.com/atgreen/cl-sanitize-html
+  affected-systems:
+    - sanitize-html
+
+affected:
+  introduced-in:  # 2025-11-02 -- the too-narrow handler-case is present in the original sanitize-html
+    commit: "a93616f"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/a93616f"
+  fixed-in:
+    commit: "59995d3"
+    version: "1.0.2"
+    url: "https://github.com/atgreen/cl-sanitize-html/commit/59995d3"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20251102-f5366ec"
+      last-affected: null
+      fixed-in: null
+    - dist: quicklisp
+      first-affected: "2026-01-01"
+      last-affected: null
+      fixed-in: null
+
+disclosure:
+  maintainer-contact: "https://github.com/atgreen/cl-sanitize-html"
+  disclosed-to-maintainer: 2026-08-07
+  maintainer-response: 2026-08-07
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  The sanitize-html entry point (src/sanitizer.lisp) wraps parsing and DOM
+  traversal in a handler-case and documents that "If parsing fails, return
+  empty string for safety."  However, the handler catches only ERROR:
+
+      (handler-case
+          (let* ((root (plump:parse html-string)) ...)
+            ...)
+        (error (e) ... ""))
+
+  Deeply nested HTML causes unbounded recursion.  Plump's parser builds the
+  tree with a recursive read-children (one stack frame per nesting level)
+  *before* the sanitizer's own recursive traversal runs, so the control
+  stack is exhausted inside plump:parse.  On SBCL this signals
+  CONTROL-STACK-EXHAUSTED, which is a STORAGE-CONDITION -- a subtype of
+  SERIOUS-CONDITION, NOT of ERROR.  It therefore bypasses the handler and
+  propagates to the caller as an unhandled condition, defeating the
+  advertised fail-safe.
+
+  This is an input-driven complexity blowup from a single request, not a
+  volumetric flood.  Confirmed against the built library (SBCL 2.6.6,
+  default control-stack size): roughly 20,000 nested elements -- about
+  98 KB of input, and closing tags are not even required -- is sufficient:
+
+      (sanitize (with-output-to-string (s)
+                  (dotimes (i 20000) (write-string "<div>" s))))
+        => uncaught CONTROL-STACK-EXHAUSTED escapes SANITIZE
+
+  A service that sanitizes untrusted HTML (user-generated content, inbound
+  email) and does not itself wrap the call in a STORAGE-CONDITION handler
+  will have the request thread / worker killed by a small crafted payload.
+
+recommendation: |
+  Update to cl-sanitize-html 1.0.2 or later (the fix landed on main via
+  PR #4, commit 59995d3).  The fix broadens the guard
+  to "(or storage-condition error)"; because HANDLER-CASE unwinds the deep
+  stack before running the handler, returning "" is reliable.  Interrupts
+  and other non-storage serious-conditions still propagate.
+
+  As an interim measure, callers embedding an older version should wrap
+  their sanitize call in their own handler for STORAGE-CONDITION (or bound
+  input size / nesting depth before sanitizing).
+
+references:
+  - https://cwe.mitre.org/data/definitions/674.html
+  - https://cwe.mitre.org/data/definitions/400.html
+  - https://github.com/atgreen/cl-sanitize-html/pull/4
+  - https://github.com/atgreen/cl-sanitize-html/commit/59995d3
+  - https://github.com/atgreen/cl-sanitize-html/releases/tag/v1.0.2
+  - https://github.com/atgreen/cl-sanitize-html/blob/v1.0.2/docs/release-notes/RELEASE-NOTES-1.0.2.md
