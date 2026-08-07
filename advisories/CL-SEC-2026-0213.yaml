@@ -1,0 +1,102 @@
+id: CL-SEC-2026-0213
+title: "HPACK dynamic-table crash on an over-max-size entry (RFC 7541 4.4), aborting a connection on peer-supplied headers"
+reported: 2026-08-07
+published: 2026-08-07
+severity: low
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+cvss-score: 5.3
+cwe: CWE-248  # Uncaught Exception (improper handling of a spec-legal input; see also CWE-20)
+
+project:
+  name: ag-gRPC
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-http2
+  unaffected-systems:
+    - ag-grpc
+    - ag-proto
+    - ag-proto-cli
+
+affected:
+  introduced-in:
+    commit: "f76354d"
+    version: "1.0.0"
+    url: "https://github.com/atgreen/ag-gRPC/commit/f76354d"
+  fixed-in:
+    # Fix applied in the working tree; pending commit + release.
+    commit: null
+    version: null
+    url: null
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: draft
+
+description: |
+  ag-http2/hpack.lisp DYNAMIC-TABLE-ADD evicts entries until a new header fits
+  the dynamic table, then appends it:
+
+      (loop while (> (+ (dynamic-table-size table) entry-size)
+                     (dynamic-table-max-size table))
+            do (dynamic-table-evict table))
+      (vector-push-extend (cons name value) (dynamic-table-entries table))
+
+  When a single entry is itself larger than the maximum table size, the loop
+  evicts every entry, reaches size 0, and -- because entry-size still exceeds
+  the maximum -- calls DYNAMIC-TABLE-EVICT once more on an empty vector, which
+  evaluates (aref entries 0) and signals SB-INT:INVALID-ARRAY-INDEX-ERROR.
+
+  RFC 7541 4.4 says this case is NOT an error: "an attempt to add an entry
+  larger than the maximum size causes the table to be emptied of all existing
+  entries and results in an empty table."  The correct behavior is to empty the
+  table and add nothing; instead the decoder faults.
+
+  Reachability.  During HPACK decode, a literal header field with incremental
+  indexing (0x40) is added to the dynamic table.  The cumulative header-list
+  guard (account, MAX_HEADER_LIST_SIZE, default 8192) fires only above 8192,
+  while the table maximum (HEADER_TABLE_SIZE, default 4096) is smaller, so a
+  single header whose name+value size sits between ~4065 and ~8160 bytes passes
+  accounting yet exceeds the table maximum and reaches the crash.  Such a header
+  fits in one HEADERS frame (the END_HEADERS path decodes without the
+  CONTINUATION-flood size cap).
+
+  Impact.  The signalled error is caught by the server's connection loop
+  ((error (e) ...) in server-connection-loop) and the connection is torn down,
+  so the effect is confined to that single HTTP/2 connection with no
+  cross-connection or process-wide impact -- hence low severity.  It is
+  nonetheless triggerable by a spec-conformant peer (RFC 7541 4.4 permits the
+  input), causing spurious connection drops / an interop failure.
+
+recommendation: |
+  Follow RFC 7541 4.4: when the entry is larger than the current maximum table
+  size, empty the table and add nothing.  The working-tree fix special-cases
+  that branch and guards the eviction loop so DYNAMIC-TABLE-EVICT is never
+  called on an empty table:
+
+      (cond
+        ((> entry-size (dynamic-table-max-size table))
+         (loop while (plusp (fill-pointer (dynamic-table-entries table)))
+               do (dynamic-table-evict table)))          ; empty; add nothing
+        (t
+         (loop while (> (+ (dynamic-table-size table) entry-size)
+                        (dynamic-table-max-size table))
+               do (dynamic-table-evict table))
+         (vector-push-extend (cons name value) (dynamic-table-entries table))
+         (incf (dynamic-table-size table) entry-size)))
+
+  This also covers a peer-set table maximum of 0 (via a dynamic-table-size
+  update).  Regression test: HPACK-OVERSIZE-DYNAMIC-ENTRY-DOES-NOT-CRASH in
+  tests/security-tests.lisp.
+
+related:
+  - CL-SEC-2026-0209  # HTTP/2 SETTINGS_MAX_FRAME_SIZE hardening (adjacent frame parsing)
+
+references:
+  - https://cwe.mitre.org/data/definitions/248.html
+  - https://www.rfc-editor.org/rfc/rfc7541#section-4.4

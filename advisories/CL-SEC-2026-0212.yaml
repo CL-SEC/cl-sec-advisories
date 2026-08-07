@@ -1,0 +1,111 @@
+id: CL-SEC-2026-0212
+title: "gRPC decompression size limit is enforced post-hoc, so a gzip/deflate bomb still allocates before rejection (incomplete fix for CL-SEC-2026-0204)"
+reported: 2026-08-07
+published: 2026-08-07
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-409  # Improper Handling of Highly Compressed Data (Decompression Bomb)
+
+project:
+  name: ag-grpc
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-grpc
+  unaffected-systems:
+    - ag-http2
+    - ag-proto
+    - ag-proto-cli
+
+affected:
+  # The weakness was introduced together with the CL-SEC-2026-0204 mitigation:
+  # *max-decompressed-size* was added but checked only AFTER full inflation.
+  introduced-in:
+    commit: "d158251"
+    version: "1.5.0"
+    url: "https://github.com/atgreen/ag-gRPC/commit/d158251"
+  fixed-in:
+    # Fix applied in the working tree (bounded-inflate); pending commit + release.
+    commit: null
+    version: null
+    url: null
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: draft
+
+description: |
+  CL-SEC-2026-0204 added *max-decompressed-size* (default 16 MiB) to defend
+  gRPC message decompression against gzip/deflate bombs.  The check, however,
+  is performed AFTER the payload has been fully inflated into memory:
+
+      ;; ag-grpc/framing.lisp (gzip-decompress, and the deflate branch of
+      ;; decompress-grpc-message)
+      (let ((result (chipz:decompress nil 'chipz:gzip simple-data)))
+        (when (and *max-decompressed-size*
+                   (> (length result) *max-decompressed-size*))   ; too late
+          (error 'grpc-error ...))
+        ...)
+
+  chipz:decompress with a NIL output buffer materializes the entire
+  decompressed output before returning, so the offending allocation has
+  already happened by the time the length is compared to the limit.  The
+  intended 16 MiB cap therefore does not bound peak memory.
+
+  Reachability and amplification.  Decompression runs during request decode,
+  before any handler/authorization logic, whenever a peer sets
+  grpc-encoding: gzip (or deflate) and the compressed flag on a gRPC message
+  addressed to any registered method.  The compressed input is bounded only by
+  the HTTP/2 receive buffer (*max-receive-buffer-size*, default 4 MiB); at
+  DEFLATE's maximum ratio (~1032:1) a single ~4 MiB compressed message expands
+  to roughly 4 GiB of transient allocation -- about 250x the intended cap --
+  repeatable across streams and connections.  On SBCL a heap-exhaustion
+  storage-condition is not a subtype of ERROR, so the server's (error (e) ...)
+  handlers do not catch it; the impact is process-wide (all connections), not
+  confined to the attacker's connection.
+
+  This affects both server-side request decompression and client-side response
+  decompression (both go through decode-grpc-message -> decompress-grpc-message
+  -> gzip-decompress / the deflate branch).
+
+recommendation: |
+  Enforce the limit DURING decompression, so no more than the cap is ever
+  allocated, rather than inflating fully and checking afterwards.
+
+  The working-tree fix adds bounded-inflate (ag-grpc/framing.lisp), which drives
+  chipz incrementally into a fixed (1+ *max-decompressed-size*)-byte output
+  buffer using the state-based API:
+
+      (let ((out   (make-array (1+ cap) :element-type '(unsigned-byte 8)))
+            (state (chipz:make-dstate format)))
+        (multiple-value-bind (consumed produced) (chipz:decompress out state input)
+          (when (> produced cap) (error 'grpc-error ...))   ; bomb: <= cap+1 allocated
+          (handler-case (chipz:finish-dstate state)         ; truncated/over-cap
+            (chipz:chipz-error () (error 'grpc-error ...)))
+          (subseq out 0 produced)))
+
+  chipz stops at output-full without erroring, so a bomb is rejected having
+  committed at most cap+1 bytes; valid payloads at/under the cap round-trip
+  byte-for-byte.  Both the gzip and deflate paths route through this helper.
+  The tunable is unchanged:
+
+      (setf ag-grpc:*max-decompressed-size* (* 64 1024 1024))  ; 64 MiB
+      (setf ag-grpc:*max-decompressed-size* nil)                ; disable (not recommended)
+
+  Regression test: DECOMPRESSION-IS-BOUNDED-BY-MAX-DECOMPRESSED-SIZE in
+  tests/security-tests.lisp.
+
+related:
+  - CL-SEC-2026-0204  # gzip bomb: the original (post-hoc) mitigation this completes
+  - CL-SEC-2026-0197  # Unbounded allocation in length-delimited decoding
+
+references:
+  - https://cwe.mitre.org/data/definitions/409.html
+  - https://en.wikipedia.org/wiki/Zip_bomb
+  - https://www.bamsoftware.com/hacks/zipbomb/
