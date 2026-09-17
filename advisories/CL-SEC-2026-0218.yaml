@@ -1,0 +1,68 @@
+id: CL-SEC-2026-0218
+title: "Quadratic ML-DSA polynomial multiplication allows CPU-exhaustion denial of service via certificate chains in pure-tls"
+reported: 2026-09-17
+published: 2026-09-17
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-407  # Inefficient Algorithmic Complexity
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-01-15, ML-DSA-65 support added
+    commit: "afd1690"
+    url: "https://github.com/atgreen/pure-tls/commit/afd1690"
+  fixed-in:
+    commit: "e7b8ca0"
+    version: "1.15.0"
+    url: "https://github.com/atgreen/pure-tls/commit/e7b8ca0"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260115-d74cc67"
+      last-affected: "20260910-dad1028"
+      fixed-in: "20260917-85465dd"
+
+description: |
+  ML-DSA-65 signature verification multiplied polynomials with
+  ml-dsa-poly-mul-schoolbook, an O(n^2) convolution performing 65536 modular
+  multiply-accumulates per product.  Verification performs 36 such products,
+  measured at 77ms each on a modern x86-64 machine — roughly 1500 times slower
+  than an NTT-based implementation.
+
+  verify-certificate-chain verifies the signature on every adjacent pair in the
+  chain BEFORE checking that the chain reaches a trust anchor.  A peer sending
+  N self-crafted ML-DSA-65 certificates that chain by issuer distinguished name
+  and carry cA=true with keyCertSign therefore forces N-1 verifications before
+  the chain is rejected.  Every cheaper gate the loop applies first — name
+  match, BasicConstraints, keyUsage, path length, validity dates, EKU — is
+  under the attacker's control because the certificates are self-crafted.  No
+  ML-DSA certificate authority needs to exist.
+
+  With *max-certificate-list-size* defaulting to 0 (unlimited), a Certificate
+  message could reach the uint24 protocol maximum of 16MB, holding roughly 4096
+  ML-DSA-65 certificates at about 4KB each: approximately 315 CPU-seconds of
+  attacker-directed verification from a single connection.  A small number of
+  concurrent connections saturates every core.
+
+  No authentication is required, in either direction.
+
+  The fix replaces schoolbook multiplication with an NTT, reducing verification
+  to about 6.4ms, and bounds the work: *max-certificate-list-size* now defaults
+  to 102400 bytes and verify-depth is enforced as a chain-length limit (it was
+  previously accepted, stored, and never read).  Combined, the same connection
+  now costs roughly 0.12 CPU-seconds.
+
+recommendation: |
+  Update to pure-tls 1.15.0 or later.  On earlier versions, setting
+  pure-tls:*max-certificate-list-size* to a non-zero value (for example 102400)
+  bounds the chain size and substantially limits the work a single connection
+  can direct, though each ML-DSA verification remains expensive.
+
+references:
+  - https://cwe.mitre.org/data/definitions/407.html
+  - https://csrc.nist.gov/pubs/fips/204/final

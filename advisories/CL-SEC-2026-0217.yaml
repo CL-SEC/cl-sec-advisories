@@ -1,0 +1,63 @@
+id: CL-SEC-2026-0217
+title: "Unbounded recursion on post-handshake records allows remote denial of service in pure-tls"
+reported: 2026-09-17
+published: 2026-09-17
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-674  # Uncontrolled Recursion
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-01-02, initial implementation
+    commit: "de204fb"
+    url: "https://github.com/atgreen/pure-tls/commit/de204fb"
+  fixed-in:
+    commit: "dc7f408"
+    version: "1.15.0"
+    url: "https://github.com/atgreen/pure-tls/commit/dc7f408"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260103-2b9eaa8"
+      last-affected: "20260910-dad1028"
+      fixed-in: "20260917-85465dd"
+
+description: |
+  tls-stream-fill-buffer in src/streams.lisp re-entered itself once per record
+  for empty records, ignorable warning alerts, and post-handshake handshake
+  messages.  The self-call sat inside a handler-case, so SBCL could not
+  eliminate it as a tail call and each record consumed stack permanently.
+
+  Two of the three branches were metered (+MAX-EMPTY-RECORDS+ = 32,
+  +MAX-WARNING-ALERTS+ = 4).  The handshake branch had no counter at all, and
+  check-handshake-buffer-size caps only the length a message ADVERTISES, not
+  the number of records used to deliver it.  A peer could therefore announce a
+  16384-byte body of an unrecognised handshake type and dribble it out one byte
+  per record; on completion the message was silently ignored and the peer began
+  another.  Roughly 11250 records — about 259KB of traffic — exhausted a 1MB
+  control stack.  As with CL-SEC-2026-0216, the SBCL abort is fatal to the
+  whole image rather than to the connection.
+
+  Reachable in both directions and without authentication in the common case:
+  make-tls-server-stream defaults to +verify-none+, so any client that
+  completes a handshake qualifies, and a malicious server can do the same to a
+  client.
+
+  The fix makes the read path iterative, so frame count is constant regardless
+  of how many records arrive, and rejects unrecognised post-handshake message
+  types with unexpected_message per RFC 8446 Section 4.6 instead of ignoring
+  them.  Note that no per-record counter was added: one-byte handshake records
+  are legitimate, and an early version of the fix that capped them broke
+  conforming peers that fragment handshake messages.
+
+recommendation: |
+  Update to pure-tls 1.15.0 or later.
+
+references:
+  - https://cwe.mitre.org/data/definitions/674.html
+  - https://datatracker.ietf.org/doc/html/rfc8446#section-4.6

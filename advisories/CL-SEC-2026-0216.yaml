@@ -1,0 +1,65 @@
+id: CL-SEC-2026-0216
+title: "Unbounded recursion in DER parser allows remote denial of service via a hostile certificate in pure-tls"
+reported: 2026-09-17
+published: 2026-09-17
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-674  # Uncontrolled Recursion
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-01-02, initial implementation
+    commit: "a3076f0"
+    url: "https://github.com/atgreen/pure-tls/commit/a3076f0"
+  fixed-in:
+    commit: "db7a6ec"
+    version: "1.15.0"
+    url: "https://github.com/atgreen/pure-tls/commit/db7a6ec"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260103-2b9eaa8"
+      last-affected: "20260910-dad1028"
+      fixed-in: "20260917-85465dd"
+
+description: |
+  parse-der-node and parse-der-contents in src/x509/asn1.lisp are mutually
+  recursive, with no bound on nesting depth.  A DER structure consisting of
+  nested constructed types recursed once per level, so a peer certificate of
+  nested SEQUENCEs exhausted the control stack.
+
+  Roughly 133KB of such a certificate was sufficient against a 1MB control
+  stack.  On SBCL the resulting abort is fatal and uncatchable: it terminates
+  the whole Lisp image rather than the connection, and neither the handler-case
+  around parse-certificate nor a handler for serious-condition could contain
+  it.  A server doing mutual TLS therefore loses every other in-flight
+  connection in the image, not just the attacker's.
+
+  No authentication is required.  Certificate parsing happens in
+  process-certificate before any signature or chain verification, so a
+  malicious server reaches it against any connecting client, and a malicious
+  client reaches it against any server that requests client certificates.
+
+  The byte budget was effectively unlimited because
+  max-handshake-message-body-size exempts Certificate messages from
+  *max-handshake-message-size* and fell back to the uint24 protocol maximum
+  while *max-certificate-list-size* defaulted to 0 (unlimited).
+
+  The fix caps nesting at +asn1-max-depth+ (64) and signals tls-decode-error
+  beyond it; RFC 5280 certificate structures nest well under 20 levels.  The
+  Certificate message is separately bounded by a non-zero default for
+  *max-certificate-list-size*.
+
+recommendation: |
+  Update to pure-tls 1.15.0 or later.  There is no configuration-level
+  mitigation in earlier versions: the recursion occurs during parsing, before
+  any policy or verification setting is consulted.
+
+references:
+  - https://cwe.mitre.org/data/definitions/674.html
+  - https://datatracker.ietf.org/doc/html/rfc5280

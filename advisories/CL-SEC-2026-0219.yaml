@@ -1,0 +1,71 @@
+id: CL-SEC-2026-0219
+title: "cl+ssl compatibility layer silently ignores :verify-callback, disabling certificate pinning in pure-tls"
+reported: 2026-09-17
+published: 2026-09-17
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 7.4
+cwe: CWE-1245  # Improper Finite State Machines / silently ignored security control
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls/cl+ssl-compat
+
+affected:
+  introduced-in:  # 2026-01-02, initial cl+ssl compatibility layer
+    commit: "a3076f0"
+    url: "https://github.com/atgreen/pure-tls/commit/a3076f0"
+  fixed-in:
+    commit: "b150123"
+    version: "1.15.0"
+    url: "https://github.com/atgreen/pure-tls/commit/b150123"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260103-2b9eaa8"
+      last-affected: "20260910-dad1028"
+      fixed-in: "20260917-85465dd"
+
+description: |
+  cl+ssl:make-context in the pure-tls compatibility layer accepted
+  :verify-callback in its lambda list and then discarded it via a
+  declare-ignore.  No warning was emitted, the docstring did not mention it,
+  and the call returned a working context.
+
+  In cl+ssl, :verify-callback is the mechanism applications use to implement
+  certificate pinning and custom chain policy.  An application that pinned a
+  specific CA or leaf through it, and then switched to pure-tls, silently
+  degraded to accepting any certificate issued by any CA in the system trust
+  store — with no indication that the control was inactive.
+
+  The exposure is amplified by how the layer is documented: the README
+  describes it as a drop-in replacement requiring no modification, and the
+  documented setup calls (asdf:register-immutable-system "cl+ssl"), which
+  shadows the real library so the pinning code cannot even be reached to
+  notice.
+
+  Exploiting this requires an attacker able to present a certificate that
+  chains to a publicly-trusted CA for the target name — precisely the threat
+  pinning is deployed against — hence the high attack complexity.  Where that
+  condition holds, the result is full interception of the connection.
+
+  The same declare-ignore also discarded :pem-password-callback and
+  :private-key-password, and make-ssl-client-stream discarded :certificate and
+  :key, so client-certificate authentication silently did not happen.
+
+  The fix makes all of these signal an error rather than no-op.  Options that
+  are genuinely meaningless for a TLS-1.3-only implementation (:cipher-list,
+  :method, :disabled-protocols, :min-proto-version, :session-cache-mode) still
+  no-op silently, and that distinction is now documented.
+
+recommendation: |
+  Update to pure-tls 1.15.0 or later, which converts these from silent no-ops
+  into errors.  Applications relying on :verify-callback for pinning must
+  implement the check themselves against the peer certificate obtained from
+  cl+ssl:ssl-stream-x509-certificate, or use pure-tls's native API directly;
+  pure-tls has no equivalent callback hook.
+
+references:
+  - https://cwe.mitre.org/data/definitions/1245.html
+  - https://cwe.mitre.org/data/definitions/295.html

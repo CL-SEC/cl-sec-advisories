@@ -1,0 +1,79 @@
+id: CL-SEC-2026-0221
+title: "ACME TLS-ALPN-01 validation private key written to a predictable temporary path in pure-tls"
+reported: 2026-09-17
+published: 2026-09-17
+severity: low
+cvss: "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N"
+cvss-score: 4.7
+cwe: CWE-377  # Insecure Temporary File
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls/acme
+
+affected:
+  introduced-in:  # 2026-01-07, TLS-ALPN-01 challenge support added
+    commit: "af97fca"
+    url: "https://github.com/atgreen/pure-tls/commit/af97fca"
+  fixed-in:
+    commit: "ad9e742"
+    version: "1.15.0"
+    url: "https://github.com/atgreen/pure-tls/commit/ad9e742"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260107-f1bc4bf"
+      last-affected: "20260910-dad1028"
+      fixed-in: "20260917-85465dd"
+
+audit:
+  verdict: severity-adjusted
+  original-severity: medium
+  notes: |
+    CVSS base vector computes to 4.7 (medium), but reachability is narrow.
+    save-temp-validation-files is called only by start-tls-alpn-server, which
+    is not exported from the pure-tls/acme package and has no caller in the
+    shipped library — the acme-acceptor path that real deployments use keeps
+    the validation certificate and key in memory and never writes them to
+    disk.  In practice only an application that reaches into the package by
+    its double-colon name is exposed.  Adjusted to low on that basis; the
+    defect is real and the code ships, which is why an advisory was issued at
+    all.
+
+description: |
+  save-temp-validation-files wrote the TLS-ALPN-01 validation private key to a
+  fixed filename, acme-validation-key.pem, in the shared temporary directory,
+  and applied mode 0600 with a chmod only AFTER with-open-file had created and
+  filled it.  The file therefore existed at the process umask — commonly
+  world-readable — for the duration of the write.
+
+  Two exposures follow for a local unprivileged user on the same host.  The
+  path is fixed and predictable, so an attacker polling it can read the EC
+  private key in the window before the chmod lands.  Separately, an attacker
+  who pre-creates that path as a symbolic link redirects both the write and the
+  subsequent chmod to a file of their choosing, since the open did not use
+  O_EXCL.
+
+  The key is an ephemeral ACME validation key rather than the domain
+  certificate key, but disclosure permits an attacker to answer the TLS-ALPN-01
+  challenge for that domain during the validation window.
+
+  The *acme-debug* branch wrote a second copy with the same pattern.
+
+  The fix creates the file with sb-posix:open using O_CREAT|O_EXCL and mode
+  0600 at creation, so there is no umask window and a pre-placed symlink is
+  refused, under a filename carrying 128 bits of CSPRNG-derived entropy.
+  Implementations without sb-posix fall back to :if-exists :error and emit an
+  explicit warning.
+
+recommendation: |
+  Update to pure-tls 1.15.0 or later.  Applications using the supported
+  acme-acceptor path were not affected, as it holds the validation key in
+  memory.  On earlier versions, avoid calling
+  pure-tls/acme::start-tls-alpn-server on a multi-user host.
+
+references:
+  - https://cwe.mitre.org/data/definitions/377.html
+  - https://cwe.mitre.org/data/definitions/379.html
+  - https://datatracker.ietf.org/doc/html/rfc8737

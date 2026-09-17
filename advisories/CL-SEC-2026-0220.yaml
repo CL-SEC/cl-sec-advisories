@@ -1,0 +1,66 @@
+id: CL-SEC-2026-0220
+title: "Empty client trust store does not fail closed under mutual TLS on macOS and Windows in pure-tls"
+reported: 2026-09-17
+published: 2026-09-17
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+cvss-score: 7.4
+cwe: CWE-295  # Improper Certificate Validation
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-01-05, mTLS client-certificate verification added
+    commit: "fee3307"
+    url: "https://github.com/atgreen/pure-tls/commit/fee3307"
+  fixed-in:
+    commit: "5c18ccd"
+    version: "1.15.0"
+    url: "https://github.com/atgreen/pure-tls/commit/5c18ccd"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260107-f1bc4bf"
+      last-affected: "20260910-dad1028"
+      fixed-in: "20260917-85465dd"
+
+description: |
+  process-client-certificate-verify guarded client-certificate chain
+  verification on the mere presence of a trust store, not on its containing any
+  certificates.  An empty-but-non-NIL trust store therefore passed the guard
+  and reached verify-certificate-chain with an empty list of roots.
+
+  On macOS and Windows that is not a refusal.  verify-certificate-chain
+  dispatches to the native verifier before reaching the pure-Lisp "no trusted
+  root certificates available" check, and both native backends treat an empty
+  anchor list as an instruction to use the operating system trust store.  This
+  is deliberate for the default configuration — *use-macos-keychain* and
+  *use-windows-certificate-store* both default to true so the OS decides — but
+  it means a server that supplied a deliberately restricted anchor set, and
+  supplied an empty one, silently accepted any client certificate chaining to
+  any publicly-trusted root instead of the intended private CA.
+
+  The condition is reachable by ordinary misconfiguration rather than
+  contrivance: make-trust-store-from-directory warns on unreadable files but
+  returns an empty store without error, so a wrong or empty CA directory path
+  produces exactly this state.  make-tls-context's :ca-file / :ca-directory
+  path does error on zero usable certificates, so client connections were not
+  affected; only a server passing :trust-store directly to
+  make-tls-server-stream was.
+
+  The fix requires the trust store to contain certificates before mTLS
+  verification proceeds, on every platform.  The overloaded meaning of an empty
+  anchor list at the native dispatch is now documented, with a warning that
+  callers supplying a restricted anchor set must make the same check.
+
+recommendation: |
+  Update to pure-tls 1.15.0 or later.  On earlier versions, verify that any
+  trust store passed as :trust-store to make-tls-server-stream is non-empty
+  before use — (pure-tls::trust-store-certificates store) must be non-NIL.
+
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://datatracker.ietf.org/doc/html/rfc8446#section-4.4.2.4
