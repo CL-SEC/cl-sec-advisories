@@ -1,0 +1,84 @@
+id: CL-SEC-2026-0222
+title: "Unbounded loop in DER parser allows remote denial of service via a length overrunning the input in pure-tls"
+reported: 2026-11-06
+published: 2026-11-06
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-835  # Loop with Unreachable Exit Condition ('Infinite Loop')
+
+project:
+  name: pure-tls
+  homepage: https://github.com/atgreen/pure-tls
+  affected-systems:
+    - pure-tls
+
+affected:
+  introduced-in:  # 2026-01-02, initial implementation
+    commit: "a3076f0"
+    url: "https://github.com/atgreen/pure-tls/commit/a3076f0"
+  fixed-in:
+    commit: "9389f2e"
+    version: "1.15.3"
+    url: "https://github.com/atgreen/pure-tls/commit/9389f2e"
+  affected-dists:
+    - dist: ocicl
+      first-affected: "20260103-2b9eaa8"
+      last-affected: "20261020-d17c7c4"   # latest snapshot (pure-tls 1.15.2), still vulnerable; no snapshot ships the 1.15.3 fix yet
+      fixed-in: ""                          # pending: update once an ocicl snapshot ships pure-tls >= 1.15.3
+
+description: |
+  parse-der-contents in src/x509/asn1.lisp parsed the children of a constructed
+  DER element by looping while the buffer position was below end-pos, where
+  end-pos was computed from the element's declared length and never checked
+  against the buffer.  When a constructed element declared more content than the
+  input actually held, end-pos sat past the end of the buffer.
+
+  Once the children had consumed everything that was there, each further
+  iteration called parse-der-node on an exhausted buffer.  parse-der-node
+  returned NIL without advancing the position, so the loop made no progress: it
+  pushed NIL onto the node list on every iteration while the position stayed
+  fixed below end-pos.  The list of NILs grew until the heap was exhausted.  On
+  SBCL the resulting abort is fatal and uncatchable ("Heap exhausted, game
+  over"): it terminates the whole Lisp image rather than the connection, and no
+  handler around the parse could contain it.  A server doing mutual TLS
+  therefore loses every other in-flight connection in the image, not just the
+  attacker's.
+
+  A minimal trigger is a SEQUENCE whose long-form length declares 256 content
+  bytes followed by only a 3-byte INTEGER:
+
+      30 82 01 00 02 01 05
+
+  No authentication is required.  DER parsing happens during the handshake,
+  before any signature or chain verification (parse-x509-certificate in
+  src/x509/certificate.lisp, and signatures and public keys in
+  src/handshake/client.lisp and src/x509/verify.lisp), so a malicious server
+  reaches it against any connecting client, and a malicious client reaches it
+  against any server that requests client certificates.
+
+  parse-der-length additionally accepted the full long form of up to 127 length
+  octets, so a declared length could be an arbitrarily large bignum reaching the
+  same path.
+
+  This is a sibling of CL-SEC-2026-0216 (unbounded recursion, CWE-674) in the
+  same parser: both let a single malformed peer certificate exhaust a process
+  resource before any verification.  The recursion-depth bound from 0216 does
+  not cover this case, because the overrun is driven by a declared length, not
+  by nesting.
+
+  The fix rejects a constructed length larger than the remaining input with
+  tls-decode-error before looping, which keeps end-pos inside the buffer and
+  guarantees each iteration consumes at least the next identifier octet, so the
+  loop terminates.  A long-form length is additionally capped at four octets
+  (+asn1-max-length-octets+).
+
+recommendation: |
+  Update to pure-tls 1.15.3 or later.  There is no configuration-level
+  mitigation in earlier versions: the loop occurs during parsing, before any
+  policy or verification setting is consulted.
+
+references:
+  - https://github.com/atgreen/pure-tls/issues/30
+  - https://cwe.mitre.org/data/definitions/835.html
+  - https://datatracker.ietf.org/doc/html/rfc5280
