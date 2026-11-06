@@ -1,0 +1,126 @@
+id: CL-SEC-2026-0223
+title: "gRPC decompression allocates the full *max-decompressed-size* cap for every message, enabling memory-exhaustion denial of service (regression from CL-SEC-2026-0212)"
+reported: 2026-11-06
+published: 2026-11-06
+severity: high
+cvss: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+cvss-score: 7.5
+cwe: CWE-770  # Allocation of Resources Without Limits or Throttling
+
+project:
+  name: ag-grpc
+  homepage: https://github.com/atgreen/ag-gRPC
+  affected-systems:
+    - ag-grpc
+  unaffected-systems:
+    - ag-http2
+    - ag-proto
+    - ag-proto-cli
+
+affected:
+  # The fixed-size buffer was introduced together with the CL-SEC-2026-0212
+  # mitigation: bounded-inflate was added to bound a bomb's peak allocation to
+  # the cap, but it sizes the buffer at (1+ *max-decompressed-size*)
+  # unconditionally, so every message - however small - now allocates the whole
+  # cap. Before 1.5.8, decompression was single-shot and allocated roughly the
+  # real output size.
+  introduced-in:
+    commit: "bee1f0f"
+    version: "1.5.8"
+    url: "https://github.com/atgreen/ag-gRPC/commit/bee1f0f"
+  fixed-in:
+    commit: "e8317b8"
+    version: "1.5.10"
+    url: "https://github.com/atgreen/ag-gRPC/commit/e8317b8"
+  affected-dists: []
+    # ag-gRPC is not in Quicklisp or ocicl
+
+disclosure:
+  maintainer-contact: null
+  disclosed-to-maintainer: null
+  maintainer-response: null
+  disclosure-deadline: null
+  cve-id: null
+  status: fixed
+
+description: |
+  CL-SEC-2026-0212 added bounded-inflate (ag-grpc/framing.lisp) to defend gRPC
+  message decompression against gzip/deflate bombs by driving chipz into a
+  fixed output buffer and rejecting output over *max-decompressed-size*
+  (default 16 MiB).  That buffer, however, is allocated at (1+ cap) octets for
+  EVERY compressed message, regardless of the message's real size:
+
+      ;; ag-grpc/framing.lisp (bounded-inflate, 1.5.8-1.5.9)
+      (let ((out   (make-array (1+ cap) :element-type '(unsigned-byte 8)))  ; 16 MiB, always
+            (state (chipz:make-dstate format)))
+        ...)
+
+  So a peer need not send a bomb at all: an ordinary small compressed message
+  - a few hundred bytes - forces a fresh 16 MiB allocation.  The intended cap
+  bounds the PEAK per message but turns every message into maximum-sized
+  garbage.
+
+  Reachability and amplification.  Decompression runs during request decode,
+  before any handler/authorization logic, whenever a peer sets
+  grpc-encoding: gzip (or deflate) and the compressed flag on a gRPC message
+  addressed to any registered method.  Each such message allocates ~16 MiB of
+  short-lived data whatever its real size, so a modest message rate sustains
+  gigabytes of allocation per minute.  Observed in production (a node agent
+  sending roughly ten small session messages a second, the largest
+  decompressing to ~153 KB): about 21.6 GiB allocated in 90 seconds.  The churn
+  pushes short-lived objects into generations the collector rarely scans and
+  drives the heap toward exhaustion; on SBCL a heap-exhaustion storage-condition
+  is not a subtype of ERROR, so the server's (error (e) ...) handlers do not
+  catch it, and the impact is process-wide (all connections), not confined to
+  the attacker's connection.  The allocation is repeatable across streams and
+  connections.
+
+  This affects both server-side request decompression and client-side response
+  decompression (both route through decode-grpc-message ->
+  decompress-grpc-message -> gzip-decompress / the deflate branch ->
+  bounded-inflate).
+
+recommendation: |
+  Keep the bomb defence but size the output buffer to the message instead of to
+  the cap.  The fix grows the buffer from a small multiple of the compressed
+  length and doubles as chipz fills it, clamped to the cap, so an ordinary
+  message allocates roughly its real size while a bomb is still rejected the
+  instant its output passes the cap (peak allocation ~2x the cap):
+
+      ;; ag-grpc/framing.lisp (bounded-inflate, 1.5.10)
+      (let* ((size   (max *inflate-minimum-buffer*          ; 4 KiB floor
+                          (* *inflate-initial-ratio*        ; 8x compressed size
+                             (length input))))
+             (output (make-array (if cap (min size (1+ cap)) size)
+                                 :element-type '(unsigned-byte 8)))
+             ...)
+        (loop
+          (multiple-value-bind (consumed written)
+              (chipz:decompress output state input
+                                :input-start input-start :output-start produced)
+            (incf input-start consumed) (incf produced written)
+            (when (and cap (> produced cap)) (error 'grpc-error ...))   ; bomb
+            (when (handler-case (chipz:finish-dstate state)
+                    (chipz:premature-end-of-stream () nil))
+              (return (subseq output 0 produced)))                      ; done
+            (when (< produced (length output)) (error 'grpc-error ...)) ; truncated
+            (grow output (min (* 2 (length output)) (1+ cap))))))       ; double, clamped
+
+  The tunable is unchanged:
+
+      (setf ag-grpc:*max-decompressed-size* (* 64 1024 1024))  ; 64 MiB
+      (setf ag-grpc:*max-decompressed-size* nil)                ; disable (not recommended)
+
+  Regression tests: BOUNDED-INFLATE-GROWS-THROUGH-MANY-DOUBLINGS and
+  BOUNDED-INFLATE-ROUND-TRIPS-INCOMPRESSIBLE-DATA in tests/grpc-tests.lisp; the
+  existing DECOMPRESSION-IS-BOUNDED-BY-MAX-DECOMPRESSED-SIZE bomb test in
+  tests/security-tests.lisp still passes.
+
+related:
+  - CL-SEC-2026-0212  # decompression bomb: this fixed-size buffer was introduced by its mitigation
+  - CL-SEC-2026-0204  # gzip bomb: the original (post-hoc) mitigation
+  - CL-SEC-2026-0197  # Unbounded allocation in length-delimited decoding
+
+references:
+  - https://cwe.mitre.org/data/definitions/770.html
+  - https://cwe.mitre.org/data/definitions/400.html
